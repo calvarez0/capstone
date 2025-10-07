@@ -1,0 +1,278 @@
+<Page x:Class="WPF_GUI.Pages.ConfigPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:local="clr-namespace:WPF_GUI.Pages"
+      mc:Ignorable="d"
+      d:DesignHeight="800" d:DesignWidth="900"
+      Background="White">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="30">
+            <!-- Page Header -->
+            <TextBlock Text="Configuration &amp; Calibration" FontSize="28" FontWeight="Bold" Foreground="#2c3e50"/>
+            <TextBlock Text="Configure actuator parameters and manage device settings"
+                       FontSize="14" Foreground="#7f8c8d" Margin="0,5,0,20"/>
+
+            <!-- Device Mode Status -->
+            <Border Background="#f8f9fa" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="5" Padding="15" Margin="0,0,0,20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Device Mode:" FontWeight="SemiBold" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <Border x:Name="ModeBadge" Background="#95a5a6" CornerRadius="4" Padding="12,6">
+                            <TextBlock x:Name="ModeText" Text="Stop Mode" FontWeight="SemiBold" Foreground="White"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button x:Name="EnterSetupButton" Content="Enter Setup Mode" Click="EnterSetupButton_Click"
+                                Background="#3498db" Foreground="White" Padding="15,8" FontSize="13"
+                                BorderThickness="0" Margin="0,0,10,0" Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#3498db"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#2980b9"/>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Background" Value="#95a5a6"/>
+                                            <Setter Property="Cursor" Value="Arrow"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <Button x:Name="ExitSetupButton" Content="Exit Setup Mode" Click="ExitSetupButton_Click"
+                                Background="#e74c3c" Foreground="White" Padding="15,8" FontSize="13"
+                                BorderThickness="0" IsEnabled="False" Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#e74c3c"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#c0392b"/>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Background" Value="#95a5a6"/>
+                                            <Setter Property="Cursor" Value="Arrow"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Configuration Grid -->
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="20"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Basic Settings Card -->
+                <Border Grid.Row="0" Grid.Column="0" Background="#f8f9fa" CornerRadius="5" Padding="20" BorderBrush="#dee2e6" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Basic Settings" FontSize="18" FontWeight="SemiBold" Foreground="#2c3e50" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Device Name" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="DeviceNameBox" Text="S7X-001" Padding="8" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Modbus Address (Register 11)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="ModbusAddressBox" Text="254" Padding="8" Margin="0,0,0,5"/>
+                        <TextBlock Text="Valid range: 1-254" FontSize="11" Foreground="#6c757d" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Speed Setting (%)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <Slider x:Name="SpeedSlider" Minimum="0" Maximum="100" Value="50" TickFrequency="10" IsSnapToTickEnabled="True" Margin="0,0,0,5"/>
+                        <TextBlock x:Name="SpeedValue" Text="50%" HorizontalAlignment="Right" Foreground="#6c757d" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Torque Limit (%)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <Slider x:Name="TorqueSlider" Minimum="0" Maximum="100" Value="80" TickFrequency="10" IsSnapToTickEnabled="True" Margin="0,0,0,5"/>
+                        <TextBlock x:Name="TorqueValue" Text="80%" HorizontalAlignment="Right" Foreground="#6c757d"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Position & Calibration Card -->
+                <Border Grid.Row="0" Grid.Column="2" Background="#f8f9fa" CornerRadius="5" Padding="20" BorderBrush="#dee2e6" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Position &amp; Calibration" FontSize="18" FontWeight="SemiBold" Foreground="#2c3e50" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Open Position (°)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="OpenPositionBox" Text="100" Padding="8" Margin="0,0,0,5"/>
+                        <TextBlock Text="Calibrated open position" FontSize="11" Foreground="#6c757d" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Close Position (°)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="ClosePositionBox" Text="0" Padding="8" Margin="0,0,0,5"/>
+                        <TextBlock Text="Calibrated close position" FontSize="11" Foreground="#6c757d" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Position Deadband (°)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="DeadbandBox" Text="2" Padding="8" Margin="0,0,0,5"/>
+                        <TextBlock Text="Accuracy tolerance" FontSize="11" Foreground="#6c757d" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Failsafe Mode" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="FailsafeCombo" SelectedIndex="0" Padding="8">
+                            <ComboBoxItem Content="Close on Power Loss"/>
+                            <ComboBoxItem Content="Open on Power Loss"/>
+                            <ComboBoxItem Content="Stay in Position"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Border>
+
+                <!-- Analog Output Settings Card -->
+                <Border Grid.Row="2" Grid.Column="0" Background="#f8f9fa" CornerRadius="5" Padding="20" BorderBrush="#dee2e6" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Analog Output (4-20mA)" FontSize="18" FontWeight="SemiBold" Foreground="#2c3e50" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Minimum Output (mA)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="MinOutputBox" Text="4" Padding="8" Margin="0,0,0,5"/>
+                        <TextBlock Text="Typically 4mA at closed position" FontSize="11" Foreground="#6c757d" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Maximum Output (mA)" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="MaxOutputBox" Text="20" Padding="8" Margin="0,0,0,5"/>
+                        <TextBlock Text="Typically 20mA at open position" FontSize="11" Foreground="#6c757d" Margin="0,0,0,15"/>
+
+                        <Border Background="#fff3cd" BorderBrush="#ffc107" BorderThickness="1" CornerRadius="4" Padding="12">
+                            <StackPanel>
+                                <TextBlock Text="Calibration Note:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <TextBlock Text="Ensure actuator reads correct analog values at fully open (20mA) and fully closed (4mA) positions to distinguish from inaccurate readings (3.8-3.9mA)."
+                                          FontSize="12" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Configuration Management Card -->
+                <Border Grid.Row="2" Grid.Column="2" Background="#f8f9fa" CornerRadius="5" Padding="20" BorderBrush="#dee2e6" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="Configuration Management" FontSize="18" FontWeight="SemiBold" Foreground="#2c3e50" Margin="0,0,0,15"/>
+
+                        <TextBlock Text="Save configuration to file for backup or load previously saved settings for rapid device replacement."
+                                  TextWrapping="Wrap" FontSize="13" Margin="0,0,0,15"/>
+
+                        <Button x:Name="SaveButton" Content="💾 Save to PC" Click="SaveButton_Click"
+                                Background="#27ae60" Foreground="White" Padding="12,8" Margin="0,0,0,8"
+                                FontSize="14" BorderThickness="0" Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#27ae60"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#229954"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button x:Name="LoadButton" Content="📁 Load from PC" Click="LoadButton_Click"
+                                Background="#3498db" Foreground="White" Padding="12,8" Margin="0,0,0,8"
+                                FontSize="14" BorderThickness="0" Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#3498db"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#2980b9"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Button x:Name="WriteButton" Content="⚡ Write to Device" Click="WriteButton_Click"
+                                Background="#e67e22" Foreground="White" Padding="12,8" Margin="0,0,0,15"
+                                FontSize="14" BorderThickness="0" IsEnabled="False" Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Background" Value="#e67e22"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Background" Value="#d35400"/>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Background" Value="#95a5a6"/>
+                                            <Setter Property="Cursor" Value="Arrow"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <Border Background="White" BorderBrush="#dee2e6" BorderThickness="1" CornerRadius="4" Padding="12">
+                            <StackPanel>
+                                <TextBlock Text="Modbus Registers:" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                                <TextBlock Text="• Register 11: Modbus Address" FontSize="12" Margin="0,0,0,3"/>
+                                <TextBlock Text="• Registers 101-111: Configuration Data" FontSize="12" Margin="0,0,0,3"/>
+                                <TextBlock Text="• Function Code 16: Preset Multiple Registers" FontSize="12"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- Status Message -->
+            <Border x:Name="MessageBorder" Visibility="Collapsed" CornerRadius="4" Padding="15" Margin="0,20,0,0">
+                <TextBlock x:Name="MessageText" TextWrapping="Wrap"/>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
