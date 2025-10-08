@@ -17,7 +17,7 @@
             VerticalAlignment="Top"
             Height="100" Width="75"
             Stretch="Uniform"
-            Source="C:\Users\a_uta\source\repos\WPF_GUI\Assets\Logo.png"/>
+            Source="/Assets/Logo.png"/>
         
         <ListBox Grid.Column="0" SelectionMode="Single" SelectionChanged="sidebar_SelectionChanged" x:Name="sidebar" Margin="0,50,0,50"  BorderThickness="0">
 
