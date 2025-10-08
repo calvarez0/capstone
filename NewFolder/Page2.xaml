@@ -23,6 +23,7 @@
                 <!-- Static label showing current value -->
                 <TextBlock Text="{Binding ElementName=Slider1, Path=Value, StringFormat=Valve Position: {0:F0}}"
                     HorizontalAlignment="Center"/>
+                
             </StackPanel>
             <StackPanel Orientation="Vertical" Margin="8" HorizontalAlignment="Center">
                 <Slider x:Name="Slider2"
