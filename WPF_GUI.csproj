@@ -16,4 +16,9 @@
     <Resource Include="Assets\Logo.png" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Include="Services\**\*.cs" />
+    <Compile Include="Models\**\*.cs" />
+  </ItemGroup>
+
 </Project>
