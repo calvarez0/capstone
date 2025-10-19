@@ -19,13 +19,16 @@ namespace WPF_GUI
         public MainWindow()
         {
             InitializeComponent();
+            // Navigate to the first page on startup
+            navframe.Source = new Uri("/NewFolder/Page1.xaml", UriKind.Relative);
         }
 
-        private void sidebar_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void NavButton_Checked(object sender, RoutedEventArgs e)
         {
-            if (sidebar.SelectedItem is NavButton navButton && navButton.Navlink != null)
+            if (sender is RadioButton radioButton && radioButton.Tag != null)
             {
-                navframe.Source = navButton.Navlink;
+                string page = radioButton.Tag.ToString();
+                navframe.Source = new Uri(page, UriKind.Relative);
             }
         }
     }
