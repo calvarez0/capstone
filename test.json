@@ -1,0 +1,17 @@
+{
+  "ComPort": null,
+  "BaudRate": 9600,
+  "Parity": 0,
+  "StopBits": 1,
+  "Actuators": [
+    {
+      "SlaveId": 1,
+      "CloseTorque": 100,
+      "OpenTorque": 15,
+      "MinPosition": 0,
+      "MaxPosition": 4095
+    }
+  ],
+  "CreatedDate": "2025-10-19T17:48:15.370876-05:00",
+  "LastModifiedDate": "2025-10-19T17:48:23.4302679-05:00"
+}
