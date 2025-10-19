@@ -8,6 +8,38 @@
         Title="BRAY S7X Actuator Configuration" Height="700" Width="1200"
         WindowStartupLocation="CenterScreen">
 
+    <Window.Resources>
+        <!-- Navigation Tab Style -->
+        <Style x:Key="NavTabStyle" TargetType="RadioButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Border"
+                                Background="Transparent"
+                                Padding="25,15"
+                                BorderThickness="0,0,0,3"
+                                BorderBrush="Transparent">
+                            <TextBlock Text="{TemplateBinding Content}"
+                                       Foreground="#ecf0f1"
+                                       FontSize="14"
+                                       FontWeight="Medium"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource NavDarkHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource NavDarkHover}"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource PrimaryRed}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </Window.Resources>
+
     <DockPanel>
         <!-- Header Section with Red Gradient -->
         <Border DockPanel.Dock="Top" Height="80">
@@ -89,36 +121,4 @@
                    Margin="20"/>
         </Grid>
     </DockPanel>
-
-    <Window.Resources>
-        <!-- Navigation Tab Style -->
-        <Style x:Key="NavTabStyle" TargetType="RadioButton">
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Border"
-                                Background="Transparent"
-                                Padding="25,15"
-                                BorderThickness="0,0,0,3"
-                                BorderBrush="Transparent">
-                            <TextBlock Text="{TemplateBinding Content}"
-                                       Foreground="#ecf0f1"
-                                       FontSize="14"
-                                       FontWeight="Medium"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="{StaticResource NavDarkHover}"/>
-                            </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Border" Property="Background" Value="{StaticResource NavDarkHover}"/>
-                                <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource PrimaryRed}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-            <Setter Property="Cursor" Value="Hand"/>
-        </Style>
-    </Window.Resources>
 </Window>
