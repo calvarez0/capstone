@@ -153,8 +153,7 @@
                                            Text="STOPPED"
                                            FontSize="16"
                                            FontWeight="Bold"
-                                           Foreground="White"
-                                           LetterSpacing="1"/>
+                                           Foreground="White"/>
                             </Border>
                         </StackPanel>
                     </StackPanel>

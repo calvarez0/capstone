@@ -40,8 +40,7 @@
                     <TextBlock Text="BRAY INTERNATIONAL"
                                FontSize="24"
                                FontWeight="Bold"
-                               Foreground="White"
-                               LetterSpacing="2"/>
+                               Foreground="White"/>
                     <TextBlock Text="S7X Actuator Configuration Software"
                                FontSize="13"
                                Foreground="White"

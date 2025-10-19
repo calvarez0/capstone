@@ -39,8 +39,7 @@
                                        Text="STOP MODE"
                                        FontSize="14"
                                        FontWeight="Bold"
-                                       Foreground="White"
-                                       LetterSpacing="1"/>
+                                       Foreground="White"/>
                         </Border>
                     </StackPanel>
 
