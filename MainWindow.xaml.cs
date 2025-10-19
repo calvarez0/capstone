@@ -35,8 +35,11 @@ namespace WPF_GUI
         {
             if (sender is RadioButton radioButton && radioButton.Tag != null && navframe != null)
             {
-                string page = radioButton.Tag.ToString();
-                navframe.Source = new Uri(page, UriKind.Relative);
+                string? page = radioButton.Tag.ToString();
+                if (!string.IsNullOrEmpty(page))
+                {
+                    navframe.Source = new Uri(page, UriKind.Relative);
+                }
             }
         }
 
