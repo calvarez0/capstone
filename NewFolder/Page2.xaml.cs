@@ -29,9 +29,9 @@ namespace WPF_GUI.NewFolder
             CloseCommandButton.Click += CloseCommandButton_Click;
             StopCommandButton.Click += StopCommandButton_Click;
 
-            // Setup polling timer
+            // Setup polling timer for UI updates
             _pollingTimer = new DispatcherTimer();
-            _pollingTimer.Interval = TimeSpan.FromMilliseconds(POLLING_INTERVAL_MS);
+            _pollingTimer.Interval = TimeSpan.FromMilliseconds(100); // Update UI every 100ms
             _pollingTimer.Tick += PollingTimer_Tick;
 
             // Subscribe to page loaded/unloaded
@@ -41,11 +41,8 @@ namespace WPF_GUI.NewFolder
 
         private void Page2_Loaded(object sender, RoutedEventArgs e)
         {
-            // Start polling if connected
-            if (_modbusService.IsConnected)
-            {
-                _pollingTimer.Start();
-            }
+            // Always start the UI update timer (works for both simulation and production)
+            _pollingTimer.Start();
         }
 
         private void Page2_Unloaded(object sender, RoutedEventArgs e)
@@ -56,13 +53,20 @@ namespace WPF_GUI.NewFolder
 
         private void PollingTimer_Tick(object sender, EventArgs e)
         {
-            if (!_modbusService.IsConnected)
+            if (App.IsSimulationMode)
             {
-                _pollingTimer.Stop();
-                return;
+                // In simulation mode, just update the UI from the device state
+                // The SimulationService updates the state automatically
+                UpdateUI();
             }
-
-            PollDeviceStatus();
+            else
+            {
+                // In production mode, poll the actual device
+                if (_modbusService.IsConnected)
+                {
+                    PollDeviceStatus();
+                }
+            }
         }
 
         private void PollDeviceStatus()
@@ -166,76 +170,103 @@ namespace WPF_GUI.NewFolder
 
         private void OpenCommandButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!_modbusService.IsConnected)
+            if (App.IsSimulationMode)
             {
-                MessageBox.Show("Not connected to device", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                // Simulation mode - use simulation service
+                App.SimulationService.SendOpenCommand();
             }
-
-            try
+            else
             {
-                // Send Open command via Modbus (Function Code 05 - Force Single Coil)
-                // Coil address 0 = Open command
-                bool success = _modbusService.WriteSingleCoil(0, true);
-
-                if (!success)
+                // Production mode - use Modbus
+                if (!_modbusService.IsConnected)
                 {
-                    MessageBox.Show("Failed to send Open command", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("Not connected to device", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error sending Open command: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                try
+                {
+                    // Send Open command via Modbus (Function Code 05 - Force Single Coil)
+                    // Coil address 0 = Open command
+                    bool success = _modbusService.WriteSingleCoil(0, true);
+
+                    if (!success)
+                    {
+                        MessageBox.Show("Failed to send Open command", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error sending Open command: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
         private void CloseCommandButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!_modbusService.IsConnected)
+            if (App.IsSimulationMode)
             {
-                MessageBox.Show("Not connected to device", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                // Simulation mode - use simulation service
+                App.SimulationService.SendCloseCommand();
             }
-
-            try
+            else
             {
-                // Send Close command via Modbus (Function Code 05 - Force Single Coil)
-                // Coil address 1 = Close command
-                bool success = _modbusService.WriteSingleCoil(1, true);
-
-                if (!success)
+                // Production mode - use Modbus
+                if (!_modbusService.IsConnected)
                 {
-                    MessageBox.Show("Failed to send Close command", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("Not connected to device", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error sending Close command: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                try
+                {
+                    // Send Close command via Modbus (Function Code 05 - Force Single Coil)
+                    // Coil address 1 = Close command
+                    bool success = _modbusService.WriteSingleCoil(1, true);
+
+                    if (!success)
+                    {
+                        MessageBox.Show("Failed to send Close command", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error sending Close command: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
 
         private void StopCommandButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!_modbusService.IsConnected)
+            if (App.IsSimulationMode)
             {
-                MessageBox.Show("Not connected to device", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
+                // Simulation mode - use simulation service
+                App.SimulationService.SendStopCommand();
             }
-
-            try
+            else
             {
-                // Send Stop command via Modbus (Function Code 05 - Force Single Coil)
-                // Coil address 2 = Stop command
-                bool success = _modbusService.WriteSingleCoil(2, true);
-
-                if (!success)
+                // Production mode - use Modbus
+                if (!_modbusService.IsConnected)
                 {
-                    MessageBox.Show("Failed to send Stop command", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show("Not connected to device", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
                 }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error sending Stop command: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                try
+                {
+                    // Send Stop command via Modbus (Function Code 05 - Force Single Coil)
+                    // Coil address 2 = Stop command
+                    bool success = _modbusService.WriteSingleCoil(2, true);
+
+                    if (!success)
+                    {
+                        MessageBox.Show("Failed to send Stop command", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error sending Stop command: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
     }

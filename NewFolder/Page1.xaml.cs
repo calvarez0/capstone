@@ -21,13 +21,64 @@ namespace WPF_GUI.NewFolder
             // Subscribe to events
             _modbusService.ConnectionStatusChanged += OnConnectionStatusChanged;
             _modbusService.ErrorOccurred += OnErrorOccurred;
+            App.ModeChanged += OnModeChanged;
 
             // Wire up button events
             OpenPortButton.Click += OpenPortButton_Click;
             ClosePortButton.Click += ClosePortButton_Click;
 
-            // Update button states
+            // Update UI based on current mode
+            UpdateUIForMode();
             UpdateButtonStates();
+        }
+
+        private void OnModeChanged(object sender, bool isSimulation)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                UpdateUIForMode();
+                UpdateButtonStates();
+            });
+        }
+
+        private void UpdateUIForMode()
+        {
+            if (App.IsSimulationMode)
+            {
+                // In simulation mode, show that we're in simulation
+                StatusMessageText.Text = "Simulation Mode Active - No hardware connection required";
+                StatusMessageBorder.Visibility = Visibility.Visible;
+                StatusMessageBorder.Background = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#d1ecf1"));
+                StatusMessageBorder.BorderBrush = new System.Windows.Media.SolidColorBrush(
+                    (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString("#3498db"));
+
+                // Disable connection controls in simulation mode
+                PortNumberTextBox.IsEnabled = false;
+                BaudRateComboBox.IsEnabled = false;
+                ParityComboBox.IsEnabled = false;
+                StopBitsComboBox.IsEnabled = false;
+                ModbusAddressTextBox.IsEnabled = false;
+                OpenPortButton.IsEnabled = false;
+                ClosePortButton.IsEnabled = false;
+            }
+            else
+            {
+                // In production mode, enable controls
+                bool isConnected = _modbusService.IsConnected;
+                PortNumberTextBox.IsEnabled = !isConnected;
+                BaudRateComboBox.IsEnabled = !isConnected;
+                ParityComboBox.IsEnabled = !isConnected;
+                StopBitsComboBox.IsEnabled = !isConnected;
+                ModbusAddressTextBox.IsEnabled = !isConnected;
+                OpenPortButton.IsEnabled = !isConnected;
+                ClosePortButton.IsEnabled = isConnected;
+
+                if (!isConnected)
+                {
+                    StatusMessageBorder.Visibility = Visibility.Collapsed;
+                }
+            }
         }
 
         private void OpenPortButton_Click(object sender, RoutedEventArgs e)

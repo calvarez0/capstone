@@ -39,5 +39,18 @@ namespace WPF_GUI
                 navframe.Source = new Uri(page, UriKind.Relative);
             }
         }
+
+        private void ModeChanged(object sender, RoutedEventArgs e)
+        {
+            if (SimulationModeRadio == null || ProductionModeRadio == null)
+                return;
+
+            bool isSimulation = SimulationModeRadio.IsChecked == true;
+            App.SetMode(isSimulation);
+
+            // Show notification
+            string modeText = isSimulation ? "Simulation" : "Production";
+            MessageBox.Show($"Switched to {modeText} mode", "Mode Changed", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
     }
 }

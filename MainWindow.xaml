@@ -38,6 +38,38 @@
             </Setter>
             <Setter Property="Cursor" Value="Hand"/>
         </Style>
+
+        <!-- Mode Toggle Style -->
+        <Style x:Key="ModeToggleStyle" TargetType="RadioButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Border"
+                                Background="#34495e"
+                                Padding="12,6"
+                                CornerRadius="4"
+                                BorderThickness="2"
+                                BorderBrush="Transparent">
+                            <TextBlock Text="{TemplateBinding Content}"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#3d5a6b"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#27ae60"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
     </Window.Resources>
 
     <DockPanel>
@@ -57,6 +89,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Logo -->
@@ -78,6 +111,30 @@
                                Foreground="White"
                                Opacity="0.95"
                                Margin="0,2,0,0"/>
+                </StackPanel>
+
+                <!-- Mode Toggle -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <TextBlock Text="Mode:"
+                               FontSize="12"
+                               Foreground="White"
+                               Opacity="0.8"
+                               Margin="0,0,0,5"
+                               HorizontalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="SimulationModeRadio"
+                                     Content="Simulation"
+                                     Foreground="White"
+                                     IsChecked="True"
+                                     Checked="ModeChanged"
+                                     Style="{StaticResource ModeToggleStyle}"
+                                     Margin="0,0,10,0"/>
+                        <RadioButton x:Name="ProductionModeRadio"
+                                     Content="Production"
+                                     Foreground="White"
+                                     Checked="ModeChanged"
+                                     Style="{StaticResource ModeToggleStyle}"/>
+                    </StackPanel>
                 </StackPanel>
             </Grid>
         </Border>
