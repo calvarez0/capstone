@@ -382,6 +382,7 @@ namespace ModbusActuatorControl
             Console.WriteLine("3. Stop");
             Console.WriteLine("4. Enable/Disable");
             Console.WriteLine("5. Reset Errors");
+            Console.WriteLine("6. Manage Bit Flags");
             Console.Write("\nSelect command: ");
 
             var choice = Console.ReadLine();
@@ -413,6 +414,9 @@ namespace ModbusActuatorControl
                     case "5":
                         device.ResetErrors();
                         break;
+                    case "6":
+                        ManageBitFlagsMenu(device);
+                        break;
                     default:
                         Console.WriteLine("Invalid command");
                         break;
@@ -421,6 +425,333 @@ namespace ModbusActuatorControl
             catch (Exception ex)
             {
                 Console.WriteLine($"Command failed: {ex.Message}");
+            }
+        }
+
+        static void ManageBitFlagsMenu(ActuatorDevice device)
+        {
+            while (true)
+            {
+                Console.WriteLine($"\n--- Manage Bit Flags - Device {device.SlaveId} ---");
+                Console.WriteLine("1. Register 11 Flags");
+                Console.WriteLine("2. Register 12 Flags");
+                Console.WriteLine("0. Return to previous menu");
+                Console.Write("\nSelect register: ");
+
+                var choice = Console.ReadLine();
+
+                if (choice == "0") break;
+
+                switch (choice)
+                {
+                    case "1":
+                        ManageRegister11Menu(device);
+                        break;
+                    case "2":
+                        ManageRegister12Menu(device);
+                        break;
+                    default:
+                        Console.WriteLine("Invalid option");
+                        break;
+                }
+            }
+        }
+
+        static void ManageRegister11Menu(ActuatorDevice device)
+        {
+            try
+            {
+                Console.WriteLine($"\n--- Manage Register 11 Flags - Device {device.SlaveId} ---");
+
+                // Read current flags from device
+                var flags = device.ReadBitFlags();
+
+                while (true)
+                {
+                    Console.WriteLine("\n" + flags.ToString());
+                    Console.WriteLine("\n--- Edit Bit Flags ---");
+                    Console.WriteLine("1.  EHO-Type");
+                    Console.WriteLine("2.  Local Input Function");
+                    Console.WriteLine("3.  Remote Input Function");
+                    Console.WriteLine("4.  Remote ESD Enabled");
+                    Console.WriteLine("5.  Loss Comm Enabled");
+                    Console.WriteLine("6.  AI1 Polarity");
+                    Console.WriteLine("7.  AI2 Polarity");
+                    Console.WriteLine("8.  AO1 Polarity");
+                    Console.WriteLine("9.  AO2 Polarity");
+                    Console.WriteLine("10. DI1 Open Trigger");
+                    Console.WriteLine("11. DI2 Close Trigger");
+                    Console.WriteLine("12. DI3 Stop Trigger");
+                    Console.WriteLine("13. DI4 ESD Trigger");
+                    Console.WriteLine("14. DI5 PST Trigger");
+                    Console.WriteLine("15. Close Direction");
+                    Console.WriteLine("16. Seat");
+                    Console.WriteLine("17. Write flags to device");
+                    Console.WriteLine("18. Reset all flags to defaults");
+                    Console.WriteLine("0.  Return to previous menu");
+                    Console.Write("\nSelect option: ");
+
+                    var choice = Console.ReadLine();
+
+                    if (choice == "0") break;
+
+                    switch (choice)
+                    {
+                        case "1":
+                            Console.WriteLine($"Current: {flags.EhoType}");
+                            Console.WriteLine("0 = Double Action, 1 = Spring Return");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.EhoType = Console.ReadLine() == "1" ? EhoType.SpringReturn : EhoType.DoubleAction;
+                            break;
+                        case "2":
+                            Console.WriteLine($"Current: {flags.LocalInputFunction}");
+                            Console.WriteLine("0 = Maintained, 1 = Momentary");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.LocalInputFunction = Console.ReadLine() == "1" ? InputFunction.Momentary : InputFunction.Maintained;
+                            break;
+                        case "3":
+                            Console.WriteLine($"Current: {flags.RemoteInputFunction}");
+                            Console.WriteLine("0 = Maintained, 1 = Momentary");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.RemoteInputFunction = Console.ReadLine() == "1" ? InputFunction.Momentary : InputFunction.Maintained;
+                            break;
+                        case "4":
+                            Console.WriteLine($"Current: {flags.RemoteEsdEnabled}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.RemoteEsdEnabled = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "5":
+                            Console.WriteLine($"Current: {flags.LossCommEnabled}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.LossCommEnabled = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "6":
+                            Console.WriteLine($"Current: {flags.Ai1Polarity}");
+                            Console.WriteLine("0 = Normal, 1 = Reversed");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Ai1Polarity = Console.ReadLine() == "1" ? Polarity.Reversed : Polarity.Normal;
+                            break;
+                        case "7":
+                            Console.WriteLine($"Current: {flags.Ai2Polarity}");
+                            Console.WriteLine("0 = Normal, 1 = Reversed");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Ai2Polarity = Console.ReadLine() == "1" ? Polarity.Reversed : Polarity.Normal;
+                            break;
+                        case "8":
+                            Console.WriteLine($"Current: {flags.Ao1Polarity}");
+                            Console.WriteLine("0 = Normal, 1 = Reversed");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Ao1Polarity = Console.ReadLine() == "1" ? Polarity.Reversed : Polarity.Normal;
+                            break;
+                        case "9":
+                            Console.WriteLine($"Current: {flags.Ao2Polarity}");
+                            Console.WriteLine("0 = Normal, 1 = Reversed");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Ao2Polarity = Console.ReadLine() == "1" ? Polarity.Reversed : Polarity.Normal;
+                            break;
+                        case "10":
+                            Console.WriteLine($"Current: {flags.Di1OpenTrigger}");
+                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Di1OpenTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
+                            break;
+                        case "11":
+                            Console.WriteLine($"Current: {flags.Di2CloseTrigger}");
+                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Di2CloseTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
+                            break;
+                        case "12":
+                            Console.WriteLine($"Current: {flags.Di3StopTrigger}");
+                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Di3StopTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
+                            break;
+                        case "13":
+                            Console.WriteLine($"Current: {flags.Di4EsdTrigger}");
+                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Di4EsdTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
+                            break;
+                        case "14":
+                            Console.WriteLine($"Current: {flags.Di5PstTrigger}");
+                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Di5PstTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
+                            break;
+                        case "15":
+                            Console.WriteLine($"Current: {flags.CloseDirection}");
+                            Console.WriteLine("0 = Clockwise, 1 = Counter-Clockwise");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.CloseDirection = Console.ReadLine() == "1" ? CloseDirection.CounterClockwise : CloseDirection.Clockwise;
+                            break;
+                        case "16":
+                            Console.WriteLine($"Current: {flags.Seat}");
+                            Console.WriteLine("0 = Position, 1 = Torque");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Seat = Console.ReadLine() == "1" ? SeatMode.Torque : SeatMode.Position;
+                            break;
+                        case "17":
+                            device.SetBitFlags(flags);
+                            Console.WriteLine("Flags written to device successfully!");
+                            break;
+                        case "18":
+                            flags = new Register11BitFlags();
+                            Console.WriteLine("All flags reset to defaults");
+                            break;
+                        default:
+                            Console.WriteLine("Invalid option");
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error managing bit flags: {ex.Message}");
+            }
+        }
+
+        static void ManageRegister12Menu(ActuatorDevice device)
+        {
+            try
+            {
+                Console.WriteLine($"\n--- Manage Register 12 Flags - Device {device.SlaveId} ---");
+
+                // Read current flags from device
+                var flags = device.ReadRegister12Flags();
+
+                while (true)
+                {
+                    Console.WriteLine("\n" + flags.ToString());
+                    Console.WriteLine("\n--- Edit Register 12 Flags ---");
+                    Console.WriteLine("1.  Torque Backseat");
+                    Console.WriteLine("2.  Torque Retry");
+                    Console.WriteLine("3.  Remote Display");
+                    Console.WriteLine("4.  LEDs");
+                    Console.WriteLine("5.  Open Inhibit");
+                    Console.WriteLine("6.  Close Inhibit");
+                    Console.WriteLine("7.  Local ESD");
+                    Console.WriteLine("8.  ESD O-R Thermal");
+                    Console.WriteLine("9.  ESD O-R Local");
+                    Console.WriteLine("10. ESD O-R Stop");
+                    Console.WriteLine("11. ESD O-R Inhibit");
+                    Console.WriteLine("12. ESD O-R Torque");
+                    Console.WriteLine("13. Close Speed Control");
+                    Console.WriteLine("14. Open Speed Control");
+                    Console.WriteLine("15. Write flags to device");
+                    Console.WriteLine("16. Reset all flags to defaults");
+                    Console.WriteLine("0.  Return to previous menu");
+                    Console.Write("\nSelect option: ");
+
+                    var choice = Console.ReadLine();
+
+                    if (choice == "0") break;
+
+                    switch (choice)
+                    {
+                        case "1":
+                            Console.WriteLine($"Current: {flags.TorqueBackseat}");
+                            Console.WriteLine("0 = Off, 1 = On");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.TorqueBackseat = Console.ReadLine() == "1" ? OnOffState.On : OnOffState.Off;
+                            break;
+                        case "2":
+                            Console.WriteLine($"Current: {flags.TorqueRetry}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.TorqueRetry = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "3":
+                            Console.WriteLine($"Current: {flags.RemoteDisplay}");
+                            Console.WriteLine("0 = Off, 1 = On");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.RemoteDisplay = Console.ReadLine() == "1" ? OnOffState.On : OnOffState.Off;
+                            break;
+                        case "4":
+                            Console.WriteLine($"Current: {flags.Leds}");
+                            Console.WriteLine("0 = Close-Green/Open-Red, 1 = Close-Red/Open-Green");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.Leds = Console.ReadLine() == "1" ? LedColorScheme.CloseRedOpenGreen : LedColorScheme.CloseGreenOpenRed;
+                            break;
+                        case "5":
+                            Console.WriteLine($"Current: {flags.OpenInhibit}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.OpenInhibit = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "6":
+                            Console.WriteLine($"Current: {flags.CloseInhibit}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.CloseInhibit = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "7":
+                            Console.WriteLine($"Current: {flags.LocalEsd}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.LocalEsd = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "8":
+                            Console.WriteLine($"Current: {flags.EsdOrThermal}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.EsdOrThermal = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "9":
+                            Console.WriteLine($"Current: {flags.EsdOrLocal}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.EsdOrLocal = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "10":
+                            Console.WriteLine($"Current: {flags.EsdOrStop}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.EsdOrStop = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "11":
+                            Console.WriteLine($"Current: {flags.EsdOrInhibit}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.EsdOrInhibit = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "12":
+                            Console.WriteLine($"Current: {flags.EsdOrTorque}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.EsdOrTorque = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "13":
+                            Console.WriteLine($"Current: {flags.CloseSpeedControl}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.CloseSpeedControl = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "14":
+                            Console.WriteLine($"Current: {flags.OpenSpeedControl}");
+                            Console.WriteLine("0 = Disabled, 1 = Enabled");
+                            Console.Write("Enter value (0 or 1): ");
+                            flags.OpenSpeedControl = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
+                            break;
+                        case "15":
+                            device.SetRegister12Flags(flags);
+                            Console.WriteLine("Flags written to device successfully!");
+                            break;
+                        case "16":
+                            flags = new Register12BitFlags();
+                            Console.WriteLine("All flags reset to defaults");
+                            break;
+                        default:
+                            Console.WriteLine("Invalid option");
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error managing Register 12 flags: {ex.Message}");
             }
         }
 
