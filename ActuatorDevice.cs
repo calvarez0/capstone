@@ -200,6 +200,70 @@ namespace ModbusActuatorControl
             }
         }
 
+        // Write bit flags to Register 11
+        public void SetBitFlags(Register11BitFlags flags)
+        {
+            try
+            {
+                ushort registerValue = flags.ToRegisterValue();
+                _master.WriteSingleRegister(_slaveId, 11, registerValue);
+                Console.WriteLine($"Device {_slaveId}: Bit flags set (Register 11 = 0x{registerValue:X4})");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to set bit flags for device {_slaveId}: {ex.Message}", ex);
+            }
+        }
+
+        // Read bit flags from Register 11
+        public Register11BitFlags ReadBitFlags()
+        {
+            try
+            {
+                var registers = _master.ReadHoldingRegisters(_slaveId, 11, 1);
+                ushort registerValue = registers[0];
+                var flags = Register11BitFlags.FromRegisterValue(registerValue);
+                Console.WriteLine($"Device {_slaveId}: Bit flags read (Register 11 = 0x{registerValue:X4})");
+                return flags;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to read bit flags from device {_slaveId}: {ex.Message}", ex);
+            }
+        }
+
+        // Write bit flags to Register 12
+        public void SetRegister12Flags(Register12BitFlags flags)
+        {
+            try
+            {
+                ushort registerValue = flags.ToRegisterValue();
+                _master.WriteSingleRegister(_slaveId, 12, registerValue);
+                Console.WriteLine($"Device {_slaveId}: Register 12 flags set (Register 12 = 0x{registerValue:X4})");
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to set Register 12 flags for device {_slaveId}: {ex.Message}", ex);
+            }
+        }
+
+        // Read bit flags from Register 12
+        public Register12BitFlags ReadRegister12Flags()
+        {
+            try
+            {
+                var registers = _master.ReadHoldingRegisters(_slaveId, 12, 1);
+                ushort registerValue = registers[0];
+                var flags = Register12BitFlags.FromRegisterValue(registerValue);
+                Console.WriteLine($"Device {_slaveId}: Register 12 flags read (Register 12 = 0x{registerValue:X4})");
+                return flags;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Failed to read Register 12 flags from device {_slaveId}: {ex.Message}", ex);
+            }
+        }
+
         // Apply a configuration to the device
         public void ApplyConfiguration(ActuatorConfiguration config)
         {
@@ -209,6 +273,18 @@ namespace ModbusActuatorControl
 
                 SetTorque(config.CloseTorque, config.OpenTorque);
                 Thread.Sleep(50);
+
+                if (config.BitFlags != null)
+                {
+                    SetBitFlags(config.BitFlags);
+                    Thread.Sleep(50);
+                }
+
+                if (config.Register12Flags != null)
+                {
+                    SetRegister12Flags(config.Register12Flags);
+                    Thread.Sleep(50);
+                }
 
                 Console.WriteLine($"Configuration applied successfully to device {_slaveId}");
             }
@@ -229,7 +305,7 @@ namespace ModbusActuatorControl
                 ushort closeTorque = (ushort)((torqueRegister >> 8) & 0xFF);
                 ushort openTorque = (ushort)(torqueRegister & 0xFF);
 
-                return new ActuatorConfiguration
+                var config = new ActuatorConfiguration
                 {
                     SlaveId = _slaveId,
                     CloseTorque = closeTorque > 0 ? closeTorque : (ushort)50,
@@ -237,6 +313,30 @@ namespace ModbusActuatorControl
                     MinPosition = 0,
                     MaxPosition = 4095
                 };
+
+                // Read bit flags from Register 11
+                try
+                {
+                    config.BitFlags = ReadBitFlags();
+                }
+                catch
+                {
+                    // If reading bit flags fails, use default values
+                    config.BitFlags = new Register11BitFlags();
+                }
+
+                // Read bit flags from Register 12
+                try
+                {
+                    config.Register12Flags = ReadRegister12Flags();
+                }
+                catch
+                {
+                    // If reading register 12 flags fails, use default values
+                    config.Register12Flags = new Register12BitFlags();
+                }
+
+                return config;
             }
             catch (Exception ex)
             {
