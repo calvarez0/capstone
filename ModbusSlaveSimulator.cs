@@ -43,6 +43,12 @@ namespace ModbusActuatorControl
 
             // Initialize control register defaults
             _holdingRegisters[112] = (ushort)((_closeTorque << 8) | _openTorque);
+
+            // Initialize Register 11 (Bit Flags) to default (all zeros)
+            _holdingRegisters[11] = 0;
+
+            // Initialize Register 12 (Bit Flags) to default (all zeros)
+            _holdingRegisters[12] = 0;
         }
 
         public void StartSimulation()
@@ -164,6 +170,18 @@ namespace ModbusActuatorControl
                         _errorCode = 0;
                         Console.WriteLine($"[Slave {_slaveId}] Moving to position {value}");
                     }
+                    break;
+
+                case 11: // Register 11 - Bit Flags
+                    Console.WriteLine($"[Slave {_slaveId}] Bit flags updated (Register 11 = 0x{value:X4})");
+                    // The value is already stored in _holdingRegisters[11] at the beginning of this method
+                    // Just log the update for visibility
+                    break;
+
+                case 12: // Register 12 - Bit Flags
+                    Console.WriteLine($"[Slave {_slaveId}] Register 12 flags updated (Register 12 = 0x{value:X4})");
+                    // The value is already stored in _holdingRegisters[12] at the beginning of this method
+                    // Just log the update for visibility
                     break;
 
                 case 103: // Stop Command
