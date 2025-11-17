@@ -13,7 +13,7 @@
             <!-- Page Header -->
             <TextBlock Text="Valve Control &amp; Monitoring"
                        Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="Real-time control and status monitoring of S7X actuator"
+            <TextBlock Text="Real-time control and status monitoring of actuator"
                        Style="{StaticResource PageDescription}"/>
 
             <!-- Control Grid -->

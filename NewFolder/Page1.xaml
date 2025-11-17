@@ -13,7 +13,7 @@
             <!-- Page Header -->
             <TextBlock Text="Connection Configuration"
                        Style="{StaticResource PageTitle}"/>
-            <TextBlock Text="Configure serial port and Modbus settings to connect to S7X actuator"
+            <TextBlock Text="Configure serial port and Modbus settings to connect to actuator"
                        Style="{StaticResource PageDescription}"/>
 
             <!-- Main Grid for Cards -->

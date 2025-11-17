@@ -1,0 +1,93 @@
+<UserControl x:Class="WPF_GUI.BrayValveControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             Width="80" Height="120">
+    <UserControl.Resources>
+        <!-- Blinking animation for movement/alarm -->
+        <Storyboard x:Key="BlinkAnimation" RepeatBehavior="Forever">
+            <ColorAnimationUsingKeyFrames Storyboard.TargetName="ValveColorBorder"
+                                         Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
+                                         Duration="0:0:2">
+                <DiscreteColorKeyFrame KeyTime="0:0:0" Value="Transparent"/>
+                <DiscreteColorKeyFrame KeyTime="0:0:1" Value="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=StatusColor}"/>
+            </ColorAnimationUsingKeyFrames>
+            <ColorAnimationUsingKeyFrames Storyboard.TargetName="CenterCircle"
+                                         Storyboard.TargetProperty="(Ellipse.Fill).(SolidColorBrush.Color)"
+                                         Duration="0:0:2">
+                <DiscreteColorKeyFrame KeyTime="0:0:0" Value="White"/>
+                <DiscreteColorKeyFrame KeyTime="0:0:1" Value="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=StatusColor}"/>
+            </ColorAnimationUsingKeyFrames>
+        </Storyboard>
+    </UserControl.Resources>
+
+    <Grid>
+        <!-- Outer border for blinking effect -->
+        <Border x:Name="ValveColorBorder"
+                BorderThickness="3"
+                CornerRadius="8"
+                Padding="5">
+            <StackPanel HorizontalAlignment="Center">
+                <!-- Top Box - Close Position (0%) -->
+                <Border Background="#27ae60"
+                        BorderBrush="#2c3e50"
+                        BorderThickness="2"
+                        CornerRadius="4"
+                        Padding="8,4"
+                        Margin="0,0,0,2">
+                    <TextBlock x:Name="TopPercentage"
+                               Text="0%"
+                               FontSize="14"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               HorizontalAlignment="Center"/>
+                </Border>
+
+                <!-- Middle Circle - Current Position Gauge -->
+                <Grid Width="50" Height="50" Margin="0,2">
+                    <!-- Outer ring -->
+                    <Ellipse Stroke="#2c3e50"
+                             StrokeThickness="3"
+                             Fill="White"/>
+
+                    <!-- Inner colored circle -->
+                    <Ellipse x:Name="CenterCircle"
+                             Width="38"
+                             Height="38"
+                             Fill="#27ae60">
+                        <Ellipse.Effect>
+                            <DropShadowEffect BlurRadius="4" Opacity="0.3"/>
+                        </Ellipse.Effect>
+                    </Ellipse>
+
+                    <!-- Current position text -->
+                    <TextBlock x:Name="PositionText"
+                               Text="100%"
+                               FontSize="12"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Grid>
+
+                <!-- Bottom Box - Number with Type Color -->
+                <Border x:Name="BottomBox"
+                        Background="#ADD8E6"
+                        BorderBrush="#2c3e50"
+                        BorderThickness="2"
+                        CornerRadius="4"
+                        Padding="12,4"
+                        Margin="0,2,0,0">
+                    <TextBlock x:Name="NumberText"
+                               Text="7"
+                               FontSize="14"
+                               FontWeight="Bold"
+                               Foreground="#2c3e50"
+                               HorizontalAlignment="Center"/>
+                </Border>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

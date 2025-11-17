@@ -4,6 +4,7 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
       xmlns:local="clr-namespace:WPF_GUI.NewFolder"
+      xmlns:controls="clr-namespace:WPF_GUI"
       mc:Ignorable="d"
       d:DesignHeight="700" d:DesignWidth="1100"
       Title="Network">
@@ -122,43 +123,101 @@
                         </Border>
 
                         <StackPanel Margin="0,0,0,12">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Ellipse Width="16" Height="16"
-                                         Fill="{StaticResource SuccessGreen}"
-                                         Margin="0,0,10,0"/>
-                                <TextBlock Text="Active Device"
-                                           FontSize="13"
+                            <!-- Status Colors -->
+                            <TextBlock Text="Status Colors:"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"
+                                       Foreground="{StaticResource TextDark}"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Width="20" Height="20"
+                                        Background="Green"
+                                        BorderBrush="#2c3e50"
+                                        BorderThickness="2"
+                                        CornerRadius="3"
+                                        Margin="0,0,10,0"/>
+                                <TextBlock Text="Green - Active/OK"
+                                           FontSize="12"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Ellipse Width="16" Height="16"
-                                         Fill="#95a5a6"
-                                         Margin="0,0,10,0"/>
-                                <TextBlock Text="Inactive/No Response"
-                                           FontSize="13"
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Width="20" Height="20"
+                                        Background="Yellow"
+                                        BorderBrush="#2c3e50"
+                                        BorderThickness="2"
+                                        CornerRadius="3"
+                                        Margin="0,0,10,0"/>
+                                <TextBlock Text="Yellow - Moving/Warning"
+                                           FontSize="12"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                <Rectangle Width="30" Height="3"
-                                           Fill="{StaticResource SuccessGreen}"
-                                           Margin="0,0,10,0"
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Border Width="20" Height="20"
+                                        Background="Red"
+                                        BorderBrush="#2c3e50"
+                                        BorderThickness="2"
+                                        CornerRadius="3"
+                                        Margin="0,0,10,0"/>
+                                <TextBlock Text="Red - Alarm/Error"
+                                           FontSize="12"
                                            VerticalAlignment="Center"/>
-                                <TextBlock Text="Connected"
-                                           FontSize="13"
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <Border Width="20" Height="20"
+                                        Background="White"
+                                        BorderBrush="#2c3e50"
+                                        BorderThickness="2"
+                                        CornerRadius="3"
+                                        Margin="0,0,10,0"/>
+                                <TextBlock Text="No Color - Inactive"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Device Types -->
+                            <TextBlock Text="Device Types:"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Margin="0,0,0,8"
+                                       Foreground="{StaticResource TextDark}"/>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <Border Width="20" Height="20"
+                                        Background="#ADD8E6"
+                                        BorderBrush="#2c3e50"
+                                        BorderThickness="2"
+                                        CornerRadius="3"
+                                        Margin="0,0,10,0"/>
+                                <TextBlock Text="Light Blue - S/X"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <Border Width="20" Height="20"
+                                        Background="Orange"
+                                        BorderBrush="#2c3e50"
+                                        BorderThickness="2"
+                                        CornerRadius="3"
+                                        Margin="0,0,10,0"/>
+                                <TextBlock Text="Orange - Nova"
+                                           FontSize="12"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
 
                             <StackPanel Orientation="Horizontal">
-                                <Rectangle Width="30" Height="3"
-                                           Fill="#95a5a6"
-                                           Margin="0,0,10,0"
-                                           VerticalAlignment="Center"
-                                           StrokeDashArray="2,2"
-                                           Stroke="#95a5a6"/>
-                                <TextBlock Text="Connection Failed"
-                                           FontSize="13"
+                                <Border Width="20" Height="20"
+                                        Background="Purple"
+                                        BorderBrush="#2c3e50"
+                                        BorderThickness="2"
+                                        CornerRadius="3"
+                                        Margin="0,0,10,0"/>
+                                <TextBlock Text="Purple - EH"
+                                           FontSize="12"
                                            VerticalAlignment="Center"/>
                             </StackPanel>
                         </StackPanel>
@@ -191,14 +250,14 @@
                                 Width="180"
                                 Cursor="Hand">
                             <StackPanel>
-                                <Ellipse Width="50" Height="50"
-                                         Fill="{StaticResource SuccessGreen}"
-                                         HorizontalAlignment="Center"
-                                         Margin="0,0,0,10">
-                                    <Ellipse.Effect>
-                                        <DropShadowEffect Color="#27ae60" BlurRadius="8" Opacity="0.4"/>
-                                    </Ellipse.Effect>
-                                </Ellipse>
+                                <controls:BrayValveControl Position="100"
+                                                          ClosePosition="0"
+                                                          DeviceAddress="1"
+                                                          DeviceType="S/X"
+                                                          StatusColor="Green"
+                                                          IsBlinking="False"
+                                                          HorizontalAlignment="Center"
+                                                          Margin="0,0,0,10"/>
                                 <TextBlock Text="S7X-001"
                                            FontSize="16"
                                            FontWeight="Bold"
@@ -228,14 +287,14 @@
                                 Width="180"
                                 Cursor="Hand">
                             <StackPanel>
-                                <Ellipse Width="50" Height="50"
-                                         Fill="{StaticResource InfoBlue}"
-                                         HorizontalAlignment="Center"
-                                         Margin="0,0,0,10">
-                                    <Ellipse.Effect>
-                                        <DropShadowEffect Color="#3498db" BlurRadius="8" Opacity="0.4"/>
-                                    </Ellipse.Effect>
-                                </Ellipse>
+                                <controls:BrayValveControl Position="78.5"
+                                                          ClosePosition="0"
+                                                          DeviceAddress="2"
+                                                          DeviceType="S/X"
+                                                          StatusColor="Yellow"
+                                                          IsBlinking="True"
+                                                          HorizontalAlignment="Center"
+                                                          Margin="0,0,0,10"/>
                                 <TextBlock Text="S7X-002"
                                            FontSize="16"
                                            FontWeight="Bold"
@@ -265,14 +324,14 @@
                                 Width="180"
                                 Cursor="Hand">
                             <StackPanel>
-                                <Ellipse Width="50" Height="50"
-                                         Fill="#e67e22"
-                                         HorizontalAlignment="Center"
-                                         Margin="0,0,0,10">
-                                    <Ellipse.Effect>
-                                        <DropShadowEffect Color="#e67e22" BlurRadius="8" Opacity="0.4"/>
-                                    </Ellipse.Effect>
-                                </Ellipse>
+                                <controls:BrayValveControl Position="22.1"
+                                                          ClosePosition="0"
+                                                          DeviceAddress="3"
+                                                          DeviceType="S/X"
+                                                          StatusColor="Green"
+                                                          IsBlinking="False"
+                                                          HorizontalAlignment="Center"
+                                                          Margin="0,0,0,10"/>
                                 <TextBlock Text="S7X-003"
                                            FontSize="16"
                                            FontWeight="Bold"
@@ -302,10 +361,14 @@
                                 Width="180"
                                 Cursor="Hand">
                             <StackPanel>
-                                <Ellipse Width="50" Height="50"
-                                         Fill="#95a5a6"
-                                         HorizontalAlignment="Center"
-                                         Margin="0,0,0,10"/>
+                                <controls:BrayValveControl Position="0"
+                                                          ClosePosition="0"
+                                                          DeviceAddress="4"
+                                                          DeviceType="S/X"
+                                                          StatusColor="Transparent"
+                                                          IsBlinking="False"
+                                                          HorizontalAlignment="Center"
+                                                          Margin="0,0,0,10"/>
                                 <TextBlock Text="S7X-004"
                                            FontSize="16"
                                            FontWeight="Bold"

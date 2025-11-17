@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WPF_GUI"
         mc:Ignorable="d"
-        Title="BRAY S7X Actuator Configuration" Height="700" Width="1200"
+        Title="BRAY Actuator Configuration" Height="700" Width="1200"
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
@@ -106,7 +106,7 @@
                                FontSize="24"
                                FontWeight="Bold"
                                Foreground="White"/>
-                    <TextBlock Text="S7X Actuator Configuration Software"
+                    <TextBlock Text="Actuator Configuration Software"
                                FontSize="13"
                                Foreground="White"
                                Opacity="0.95"
