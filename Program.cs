@@ -10,12 +10,16 @@ namespace ModbusActuatorControl
     {
         private static ModbusMaster _master;
         private static List<ActuatorDevice> _devices = new List<ActuatorDevice>();
-        private static SystemConfiguration _currentConfig;
+        private static SystemConfig _currentConfig;
         private static bool _isSimulationMode = false;
 
         static void Main(string[] args)
         {
-            Console.WriteLine("=== Modbus RTU Actuator Control System ===\n");
+            Console.WriteLine("=== Modbus RTU Actuator Control System ===");
+
+            // Display runtime framework version
+            string frameworkVersion = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+            Console.WriteLine($"Runtime: {frameworkVersion}\n");
 
             try
             {
@@ -46,6 +50,7 @@ namespace ModbusActuatorControl
             {
                 Console.WriteLine("\n*** SIMULATION MODE ACTIVE ***");
                 Console.WriteLine("You can test all features without connected hardware.\n");
+                CreateSimulatedDevices();
             }
             else
             {
@@ -173,7 +178,7 @@ namespace ModbusActuatorControl
 
             if (_currentConfig == null)
             {
-                _currentConfig = new SystemConfiguration();
+                _currentConfig = new SystemConfig();
             }
             _currentConfig.ComPort = "SIM";
             _currentConfig.BaudRate = baudRate;
@@ -183,6 +188,24 @@ namespace ModbusActuatorControl
             Console.WriteLine($"\nCreated {count} simulated device(s)");
             Console.WriteLine($"Connection settings: {baudRate} baud, Parity={parity}, StopBits={stopBits}");
             Console.WriteLine($"Found {_devices.Count} device(s)");
+
+            // Automatically read configuration from the simulated devices
+            Console.WriteLine("\nReading configuration from simulated devices...");
+            _currentConfig.Actuators.Clear();
+            foreach (var device in _devices)
+            {
+                try
+                {
+                    var config = device.ReadConfiguration();
+                    _currentConfig.Actuators.Add(config);
+                    Console.WriteLine($"Read configuration from device {device.SlaveId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to read configuration from device {device.SlaveId}: {ex.Message}");
+                }
+            }
+            Console.WriteLine($"Configuration loaded from {_currentConfig.Actuators.Count} device(s)");
         }
 
         static void ListSimulatedDevices()
@@ -377,12 +400,14 @@ namespace ModbusActuatorControl
                 return;
             }
 
-            Console.WriteLine("\n1. Move to Position (0-4095)");
-            Console.WriteLine("2. Set Torque (Close & Open)");
-            Console.WriteLine("3. Stop");
-            Console.WriteLine("4. Enable/Disable");
-            Console.WriteLine("5. Reset Errors");
-            Console.WriteLine("6. Manage Bit Flags");
+            Console.WriteLine("\n--- Device Commands ---");
+            Console.WriteLine("1. View Detailed Status");
+            Console.WriteLine("2. Move to Position (0-4095)");
+            Console.WriteLine("3. Open");
+            Console.WriteLine("4. Close");
+            Console.WriteLine("5. Stop");
+            Console.WriteLine("6. ESD");
+            Console.WriteLine("7. Toggle Setup Mode");
             Console.Write("\nSelect command: ");
 
             var choice = Console.ReadLine();
@@ -392,30 +417,27 @@ namespace ModbusActuatorControl
                 switch (choice)
                 {
                     case "1":
+                        ViewDetailedStatus(device);
+                        break;
+                    case "2":
                         Console.Write("Enter target position (0-4095): ");
                         ushort position = ushort.Parse(Console.ReadLine());
                         device.MoveToPosition(position);
                         break;
-                    case "2":
-                        Console.Write("Enter close torque (15-100, default 50): ");
-                        ushort closeTorque = ushort.Parse(Console.ReadLine());
-                        Console.Write("Enter open torque (15-100, default 50): ");
-                        ushort openTorque = ushort.Parse(Console.ReadLine());
-                        device.SetTorque(closeTorque, openTorque);
+                    case "3": // Open
+                        HostCommandOpen(device);
                         break;
-                    case "3":
-                        device.Stop();
+                    case "4": // Close
+                        HostCommandClose(device);
                         break;
-                    case "4":
-                        Console.Write("Enable? (y/n): ");
-                        bool enable = Console.ReadLine().ToLower() == "y";
-                        device.SetEnabled(enable);
+                    case "5": // Stop
+                        HostCommandStop(device);
                         break;
-                    case "5":
-                        device.ResetErrors();
+                    case "6": // ESD
+                        HostCommandESD(device);
                         break;
-                    case "6":
-                        ManageBitFlagsMenu(device);
+                    case "7": // Toggle Setup Mode
+                        ToggleSetupMode(device);
                         break;
                     default:
                         Console.WriteLine("Invalid command");
@@ -428,411 +450,201 @@ namespace ModbusActuatorControl
             }
         }
 
-        static void ManageBitFlagsMenu(ActuatorDevice device)
-        {
-            while (true)
-            {
-                Console.WriteLine($"\n--- Manage Bit Flags - Device {device.SlaveId} ---");
-                Console.WriteLine("1. Register 11 Flags");
-                Console.WriteLine("2. Register 12 Flags");
-                Console.WriteLine("0. Return to previous menu");
-                Console.Write("\nSelect register: ");
-
-                var choice = Console.ReadLine();
-
-                if (choice == "0") break;
-
-                switch (choice)
-                {
-                    case "1":
-                        ManageRegister11Menu(device);
-                        break;
-                    case "2":
-                        ManageRegister12Menu(device);
-                        break;
-                    default:
-                        Console.WriteLine("Invalid option");
-                        break;
-                }
-            }
-        }
-
-        static void ManageRegister11Menu(ActuatorDevice device)
+        static void HostCommandOpen(ActuatorDevice device)
         {
             try
             {
-                Console.WriteLine($"\n--- Manage Register 11 Flags - Device {device.SlaveId} ---");
-
-                // Read current flags from device
-                var flags = device.ReadBitFlags();
-
-                while (true)
-                {
-                    Console.WriteLine("\n" + flags.ToString());
-                    Console.WriteLine("\n--- Edit Bit Flags ---");
-                    Console.WriteLine("1.  EHO-Type");
-                    Console.WriteLine("2.  Local Input Function");
-                    Console.WriteLine("3.  Remote Input Function");
-                    Console.WriteLine("4.  Remote ESD Enabled");
-                    Console.WriteLine("5.  Loss Comm Enabled");
-                    Console.WriteLine("6.  AI1 Polarity");
-                    Console.WriteLine("7.  AI2 Polarity");
-                    Console.WriteLine("8.  AO1 Polarity");
-                    Console.WriteLine("9.  AO2 Polarity");
-                    Console.WriteLine("10. DI1 Open Trigger");
-                    Console.WriteLine("11. DI2 Close Trigger");
-                    Console.WriteLine("12. DI3 Stop Trigger");
-                    Console.WriteLine("13. DI4 ESD Trigger");
-                    Console.WriteLine("14. DI5 PST Trigger");
-                    Console.WriteLine("15. Close Direction");
-                    Console.WriteLine("16. Seat");
-                    Console.WriteLine("17. Write flags to device");
-                    Console.WriteLine("18. Reset all flags to defaults");
-                    Console.WriteLine("0.  Return to previous menu");
-                    Console.Write("\nSelect option: ");
-
-                    var choice = Console.ReadLine();
-
-                    if (choice == "0") break;
-
-                    switch (choice)
-                    {
-                        case "1":
-                            Console.WriteLine($"Current: {flags.EhoType}");
-                            Console.WriteLine("0 = Double Action, 1 = Spring Return");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.EhoType = Console.ReadLine() == "1" ? EhoType.SpringReturn : EhoType.DoubleAction;
-                            break;
-                        case "2":
-                            Console.WriteLine($"Current: {flags.LocalInputFunction}");
-                            Console.WriteLine("0 = Maintained, 1 = Momentary");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.LocalInputFunction = Console.ReadLine() == "1" ? InputFunction.Momentary : InputFunction.Maintained;
-                            break;
-                        case "3":
-                            Console.WriteLine($"Current: {flags.RemoteInputFunction}");
-                            Console.WriteLine("0 = Maintained, 1 = Momentary");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.RemoteInputFunction = Console.ReadLine() == "1" ? InputFunction.Momentary : InputFunction.Maintained;
-                            break;
-                        case "4":
-                            Console.WriteLine($"Current: {flags.RemoteEsdEnabled}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.RemoteEsdEnabled = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "5":
-                            Console.WriteLine($"Current: {flags.LossCommEnabled}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.LossCommEnabled = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "6":
-                            Console.WriteLine($"Current: {flags.Ai1Polarity}");
-                            Console.WriteLine("0 = Normal, 1 = Reversed");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Ai1Polarity = Console.ReadLine() == "1" ? Polarity.Reversed : Polarity.Normal;
-                            break;
-                        case "7":
-                            Console.WriteLine($"Current: {flags.Ai2Polarity}");
-                            Console.WriteLine("0 = Normal, 1 = Reversed");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Ai2Polarity = Console.ReadLine() == "1" ? Polarity.Reversed : Polarity.Normal;
-                            break;
-                        case "8":
-                            Console.WriteLine($"Current: {flags.Ao1Polarity}");
-                            Console.WriteLine("0 = Normal, 1 = Reversed");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Ao1Polarity = Console.ReadLine() == "1" ? Polarity.Reversed : Polarity.Normal;
-                            break;
-                        case "9":
-                            Console.WriteLine($"Current: {flags.Ao2Polarity}");
-                            Console.WriteLine("0 = Normal, 1 = Reversed");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Ao2Polarity = Console.ReadLine() == "1" ? Polarity.Reversed : Polarity.Normal;
-                            break;
-                        case "10":
-                            Console.WriteLine($"Current: {flags.Di1OpenTrigger}");
-                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Di1OpenTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
-                            break;
-                        case "11":
-                            Console.WriteLine($"Current: {flags.Di2CloseTrigger}");
-                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Di2CloseTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
-                            break;
-                        case "12":
-                            Console.WriteLine($"Current: {flags.Di3StopTrigger}");
-                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Di3StopTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
-                            break;
-                        case "13":
-                            Console.WriteLine($"Current: {flags.Di4EsdTrigger}");
-                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Di4EsdTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
-                            break;
-                        case "14":
-                            Console.WriteLine($"Current: {flags.Di5PstTrigger}");
-                            Console.WriteLine("0 = Normally Open, 1 = Normally Close");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Di5PstTrigger = Console.ReadLine() == "1" ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
-                            break;
-                        case "15":
-                            Console.WriteLine($"Current: {flags.CloseDirection}");
-                            Console.WriteLine("0 = Clockwise, 1 = Counter-Clockwise");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.CloseDirection = Console.ReadLine() == "1" ? CloseDirection.CounterClockwise : CloseDirection.Clockwise;
-                            break;
-                        case "16":
-                            Console.WriteLine($"Current: {flags.Seat}");
-                            Console.WriteLine("0 = Position, 1 = Torque");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Seat = Console.ReadLine() == "1" ? SeatMode.Torque : SeatMode.Position;
-                            break;
-                        case "17":
-                            device.SetBitFlags(flags);
-                            Console.WriteLine("Flags written to device successfully!");
-                            break;
-                        case "18":
-                            flags = new Register11BitFlags();
-                            Console.WriteLine("All flags reset to defaults");
-                            break;
-                        default:
-                            Console.WriteLine("Invalid option");
-                            break;
-                    }
-                }
+                device.MoveToPosition(4095); // Move to maximum position
+                Console.WriteLine("Opening device to maximum position...");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error managing bit flags: {ex.Message}");
+                Console.WriteLine($"Error: {ex.Message}");
             }
         }
 
-        static void ManageRegister12Menu(ActuatorDevice device)
+        static void HostCommandClose(ActuatorDevice device)
         {
             try
             {
-                Console.WriteLine($"\n--- Manage Register 12 Flags - Device {device.SlaveId} ---");
-
-                // Read current flags from device
-                var flags = device.ReadRegister12Flags();
-
-                while (true)
-                {
-                    Console.WriteLine("\n" + flags.ToString());
-                    Console.WriteLine("\n--- Edit Register 12 Flags ---");
-                    Console.WriteLine("1.  Torque Backseat");
-                    Console.WriteLine("2.  Torque Retry");
-                    Console.WriteLine("3.  Remote Display");
-                    Console.WriteLine("4.  LEDs");
-                    Console.WriteLine("5.  Open Inhibit");
-                    Console.WriteLine("6.  Close Inhibit");
-                    Console.WriteLine("7.  Local ESD");
-                    Console.WriteLine("8.  ESD O-R Thermal");
-                    Console.WriteLine("9.  ESD O-R Local");
-                    Console.WriteLine("10. ESD O-R Stop");
-                    Console.WriteLine("11. ESD O-R Inhibit");
-                    Console.WriteLine("12. ESD O-R Torque");
-                    Console.WriteLine("13. Close Speed Control");
-                    Console.WriteLine("14. Open Speed Control");
-                    Console.WriteLine("15. Write flags to device");
-                    Console.WriteLine("16. Reset all flags to defaults");
-                    Console.WriteLine("0.  Return to previous menu");
-                    Console.Write("\nSelect option: ");
-
-                    var choice = Console.ReadLine();
-
-                    if (choice == "0") break;
-
-                    switch (choice)
-                    {
-                        case "1":
-                            Console.WriteLine($"Current: {flags.TorqueBackseat}");
-                            Console.WriteLine("0 = Off, 1 = On");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.TorqueBackseat = Console.ReadLine() == "1" ? OnOffState.On : OnOffState.Off;
-                            break;
-                        case "2":
-                            Console.WriteLine($"Current: {flags.TorqueRetry}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.TorqueRetry = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "3":
-                            Console.WriteLine($"Current: {flags.RemoteDisplay}");
-                            Console.WriteLine("0 = Off, 1 = On");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.RemoteDisplay = Console.ReadLine() == "1" ? OnOffState.On : OnOffState.Off;
-                            break;
-                        case "4":
-                            Console.WriteLine($"Current: {flags.Leds}");
-                            Console.WriteLine("0 = Close-Green/Open-Red, 1 = Close-Red/Open-Green");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.Leds = Console.ReadLine() == "1" ? LedColorScheme.CloseRedOpenGreen : LedColorScheme.CloseGreenOpenRed;
-                            break;
-                        case "5":
-                            Console.WriteLine($"Current: {flags.OpenInhibit}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.OpenInhibit = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "6":
-                            Console.WriteLine($"Current: {flags.CloseInhibit}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.CloseInhibit = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "7":
-                            Console.WriteLine($"Current: {flags.LocalEsd}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.LocalEsd = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "8":
-                            Console.WriteLine($"Current: {flags.EsdOrThermal}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.EsdOrThermal = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "9":
-                            Console.WriteLine($"Current: {flags.EsdOrLocal}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.EsdOrLocal = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "10":
-                            Console.WriteLine($"Current: {flags.EsdOrStop}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.EsdOrStop = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "11":
-                            Console.WriteLine($"Current: {flags.EsdOrInhibit}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.EsdOrInhibit = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "12":
-                            Console.WriteLine($"Current: {flags.EsdOrTorque}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.EsdOrTorque = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "13":
-                            Console.WriteLine($"Current: {flags.CloseSpeedControl}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.CloseSpeedControl = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "14":
-                            Console.WriteLine($"Current: {flags.OpenSpeedControl}");
-                            Console.WriteLine("0 = Disabled, 1 = Enabled");
-                            Console.Write("Enter value (0 or 1): ");
-                            flags.OpenSpeedControl = Console.ReadLine() == "1" ? EnabledState.Enabled : EnabledState.Disabled;
-                            break;
-                        case "15":
-                            device.SetRegister12Flags(flags);
-                            Console.WriteLine("Flags written to device successfully!");
-                            break;
-                        case "16":
-                            flags = new Register12BitFlags();
-                            Console.WriteLine("All flags reset to defaults");
-                            break;
-                        default:
-                            Console.WriteLine("Invalid option");
-                            break;
-                    }
-                }
+                device.MoveToPosition(0); // Move to minimum position
+                Console.WriteLine("Closing device to minimum position...");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error managing Register 12 flags: {ex.Message}");
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
+        static void HostCommandStop(ActuatorDevice device)
+        {
+            try
+            {
+                Console.Write("Enable stop mode? (y/n): ");
+                bool enableStop = Console.ReadLine().ToLower() == "y";
+
+                // Check if we're trying to disable stop mode while setup mode is on
+                if (!enableStop)
+                {
+                    device.UpdateStatus();
+                    if (device.CurrentStatus.Status.SetupMode)
+                    {
+                        Console.WriteLine("Error: Cannot disable stop mode while setup mode is active. Exit setup mode first.");
+                        return;
+                    }
+                }
+
+                device.Stop(enableStop);
+                Console.WriteLine(enableStop ? "Stop mode enabled." : "Stop mode disabled.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
+        static void HostCommandESD(ActuatorDevice device)
+        {
+            try
+            {
+                var status = new DeviceStatus();
+                status.HostEsdCmd = true;
+                status.WriteCommandsToDevice(_master, device.SlaveId);
+                Console.WriteLine("ESD command sent.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
+        static void ToggleSetupMode(ActuatorDevice device)
+        {
+            try
+            {
+                Console.Write("Enter setup mode? (y/n): ");
+                bool enterSetup = Console.ReadLine().ToLower() == "y";
+
+                // Update status to get current state
+                device.UpdateStatus();
+
+                // Check if stop mode is on before allowing setup mode entry
+                if (enterSetup)
+                {
+                    if (!device.CurrentStatus.Status.StopMode)
+                    {
+                        Console.WriteLine("Error: Cannot enter setup mode. Device must be in stop mode first (send stop command).");
+                        return;
+                    }
+                }
+
+                // Read current command state and only modify soft setup bit
+                device.CurrentStatus.Status.SoftSetupCmd = enterSetup;
+                device.CurrentStatus.Status.WriteCommandsToDevice(_master, device.SlaveId);
+                Console.WriteLine(enterSetup ? "Entering setup mode..." : "Exiting setup mode...");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
+        static void ViewDetailedStatus(ActuatorDevice device)
+        {
+            try
+            {
+                device.UpdateStatus();
+                Console.WriteLine(device.CurrentStatus.ToDetailedString());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
+        static bool CheckConnection()
+        {
+            if (_master == null || !_master.IsConnected)
+            {
+                Console.WriteLine("Not connected. Connect first.");
+                return false;
+            }
+            return true;
+        }
+
+        static void Disconnect()
+        {
+            foreach (var device in _devices)
+            {
+                device.StopPolling();
+            }
+            _devices.Clear();
+
+            if (_master != null)
+            {
+                _master.Disconnect();
+                _master = null;
+            }
+
+            Console.WriteLine("Disconnected");
+        }
+
+        static void Cleanup()
+        {
+            if (_master != null && _master.IsConnected)
+            {
+                Disconnect();
             }
         }
 
         static void ConfigurationMenu()
         {
             Console.WriteLine("\n--- Configuration Management ---");
-            Console.WriteLine("1. Create New Configuration");
-            Console.WriteLine("2. Load Configuration from File");
-            Console.WriteLine("3. Save Current Configuration");
-            Console.WriteLine("4. Apply Configuration to Devices");
-            Console.WriteLine("5. Read Configuration from Devices");
-            Console.WriteLine("6. Export Configuration to CSV");
+            Console.WriteLine("1. Load Configuration from File");
+            Console.WriteLine("2. Save Configuration to File");
+            Console.WriteLine("3. Apply Configuration to Devices");
+            Console.WriteLine("4. Read Configuration from Devices");
+            Console.WriteLine("5. Edit Device Configuration");
             Console.Write("\nSelect option: ");
 
             var choice = Console.ReadLine();
 
-            try
+            switch (choice)
             {
-                switch (choice)
-                {
-                    case "1":
-                        CreateNewConfiguration();
-                        break;
-                    case "2":
-                        LoadConfiguration();
-                        break;
-                    case "3":
-                        SaveConfiguration();
-                        break;
-                    case "4":
-                        ApplyConfiguration();
-                        break;
-                    case "5":
-                        ReadConfigurationFromDevices();
-                        break;
-                    case "6":
-                        ExportConfigurationToCsv();
-                        break;
-                    default:
-                        Console.WriteLine("Invalid option");
-                        break;
-                }
+                case "1":
+                    LoadConfiguration();
+                    break;
+                case "2":
+                    SaveConfiguration();
+                    break;
+                case "3":
+                    ApplyConfiguration();
+                    break;
+                case "4":
+                    ReadConfiguration();
+                    break;
+                case "5":
+                    EditDeviceConfigurationMenu();
+                    break;
+                default:
+                    Console.WriteLine("Invalid option");
+                    break;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Configuration operation failed: {ex.Message}");
-            }
-        }
-
-        static void CreateNewConfiguration()
-        {
-            _currentConfig = ConfigurationManager.CreateDefaultConfiguration();
-            Console.WriteLine("Default configuration created.");
         }
 
         static void LoadConfiguration()
         {
             Console.Write("Enter configuration file path: ");
             var filePath = Console.ReadLine();
-            _currentConfig = ConfigurationManager.LoadConfiguration(filePath);
-            Console.WriteLine($"Configuration loaded: {_currentConfig.Actuators.Count} actuator(s)");
-            Console.WriteLine($"Connection Settings: {_currentConfig.ComPort}, {_currentConfig.BaudRate} baud, Parity={_currentConfig.Parity}, StopBits={_currentConfig.StopBits}");
 
-            if (!_isSimulationMode && (_master == null || !_master.IsConnected))
+            try
             {
-                Console.Write("\nConnect using these settings? (y/n): ");
-                if (Console.ReadLine()?.ToLower() == "y")
-                {
-                    try
-                    {
-                        var parity = GetParityFromInt(_currentConfig.Parity);
-                        var stopBits = GetStopBitsFromInt(_currentConfig.StopBits);
-                        _master = new ModbusMaster(_currentConfig.ComPort, _currentConfig.BaudRate, 8, parity, stopBits);
-                        _master.Connect();
-                        Console.WriteLine("Connected successfully!");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Connection failed: {ex.Message}");
-                    }
-                }
+                _currentConfig = SystemConfig.LoadFromFile(filePath);
+                Console.WriteLine($"Loaded configuration with {_currentConfig.Actuators.Count} actuator(s)");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load configuration: {ex.Message}");
             }
         }
 
@@ -840,30 +652,52 @@ namespace ModbusActuatorControl
         {
             if (_currentConfig == null)
             {
-                Console.WriteLine("No configuration to save. Create or load one first.");
+                Console.WriteLine("No configuration to save. Read from devices first.");
                 return;
             }
 
-            Console.Write("Enter save file path (e.g., config.json): ");
+            Console.Write("Enter configuration file path: ");
             var filePath = Console.ReadLine();
-            ConfigurationManager.SaveConfiguration(_currentConfig, filePath);
+
+            try
+            {
+                _currentConfig.SaveToFile(filePath);
+                Console.WriteLine("Configuration saved successfully");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to save configuration: {ex.Message}");
+            }
         }
 
         static void ApplyConfiguration()
         {
+            if (!CheckConnection()) return;
+
             if (_currentConfig == null)
             {
-                Console.WriteLine("No configuration loaded. Load one first.");
+                Console.WriteLine("No configuration loaded. Load from file first.");
                 return;
             }
 
-            if (!CheckConnection()) return;
-
-            var master = _master;
-            ConfigurationManager.ApplyConfiguration(_currentConfig, master);
+            foreach (var actuatorConfig in _currentConfig.Actuators)
+            {
+                var device = _devices.FirstOrDefault(d => d.SlaveId == actuatorConfig.SlaveId);
+                if (device != null)
+                {
+                    try
+                    {
+                        device.ApplyConfiguration(actuatorConfig);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to apply configuration to device {actuatorConfig.SlaveId}: {ex.Message}");
+                    }
+                }
+            }
         }
 
-        static void ReadConfigurationFromDevices()
+        static void ReadConfiguration()
         {
             if (!CheckConnection()) return;
 
@@ -873,23 +707,30 @@ namespace ModbusActuatorControl
                 return;
             }
 
-            var master = _master;
-            var slaveIds = _devices.Select(d => d.SlaveId).ToList();
-            _currentConfig = ConfigurationManager.ReadConfigurationFromDevices(master, slaveIds);
-            Console.WriteLine($"Configuration read from {(_isSimulationMode ? "simulated " : "")}devices successfully");
-        }
-
-        static void ExportConfigurationToCsv()
-        {
-            if (_currentConfig == null)
+            _currentConfig = new SystemConfig
             {
-                Console.WriteLine("No configuration to export. Create or load one first.");
-                return;
+                ComPort = _isSimulationMode ? "SIM" : "COM1",
+                BaudRate = 9600,
+                Parity = 0,
+                StopBits = 1,
+                Actuators = new List<ActuatorConfig>()
+            };
+
+            foreach (var device in _devices)
+            {
+                try
+                {
+                    var config = device.ReadConfiguration();
+                    _currentConfig.Actuators.Add(config);
+                    Console.WriteLine($"Read configuration from device {device.SlaveId}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to read configuration from device {device.SlaveId}: {ex.Message}");
+                }
             }
 
-            Console.Write("Enter CSV file path (e.g., config.csv): ");
-            var filePath = Console.ReadLine();
-            ConfigurationManager.ExportToCsv(_currentConfig, filePath);
+            Console.WriteLine($"\nRead configuration from {_currentConfig.Actuators.Count} device(s)");
         }
 
         static void CalibrationMenu()
@@ -898,11 +739,12 @@ namespace ModbusActuatorControl
 
             if (_devices.Count == 0)
             {
-                Console.WriteLine($"\nNo devices available. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
+                Console.WriteLine($"No devices available. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
                 return;
             }
 
-            Console.Write("\nEnter slave ID to calibrate: ");
+            Console.WriteLine("\n--- Calibration ---");
+            Console.Write("Enter slave ID: ");
             byte slaveId = byte.Parse(Console.ReadLine());
 
             var device = _devices.FirstOrDefault(d => d.SlaveId == slaveId);
@@ -912,19 +754,14 @@ namespace ModbusActuatorControl
                 return;
             }
 
-            Console.WriteLine($"\nStarting calibration for {(_isSimulationMode ? "simulated " : "")}device {slaveId}...");
-            if (_isSimulationMode)
-                Console.WriteLine("(Simulation will take ~3 seconds)");
-            else
-                Console.WriteLine("WARNING: Ensure the actuator path is clear!");
+            Console.WriteLine("\nThis will calibrate the actuator.");
             Console.Write("Continue? (y/n): ");
-
-            if (Console.ReadLine().ToLower() == "y")
+            if (Console.ReadLine()?.ToLower() == "y")
             {
                 try
                 {
-                    device.StartCalibration();
-                    Console.WriteLine("Calibration command sent. Monitor device status.");
+                    device.Calibrate();
+                    Console.WriteLine("Calibration started. Monitor device status for completion.");
                 }
                 catch (Exception ex)
                 {
@@ -933,60 +770,313 @@ namespace ModbusActuatorControl
             }
         }
 
-        static void Disconnect()
+        static void EditDeviceConfigurationMenu()
         {
-            if (_master == null || !_master.IsConnected)
+            if (_currentConfig == null || _currentConfig.Actuators.Count == 0)
             {
-                Console.WriteLine("Not connected.");
+                Console.WriteLine("No configuration loaded. Load from file or read from devices first.");
                 return;
             }
 
-            foreach (var device in _devices)
+            Console.WriteLine("\n--- Select Device to Edit ---");
+            for (int i = 0; i < _currentConfig.Actuators.Count; i++)
             {
-                device.StopPolling();
+                var actuator = _currentConfig.Actuators[i];
+                Console.WriteLine($"{i + 1}. Slave ID {actuator.SlaveId} - {actuator.DeviceName}");
             }
-            _devices.Clear();
+            Console.Write("\nSelect device (number): ");
 
-            _master.Disconnect();
-            _master = null;
-            Console.WriteLine("Disconnected successfully.");
-        }
-
-        static void Cleanup()
-        {
-            foreach (var device in _devices)
+            if (int.TryParse(Console.ReadLine(), out int deviceIndex) && deviceIndex > 0 && deviceIndex <= _currentConfig.Actuators.Count)
             {
-                device.StopPolling();
+                EditDeviceConfiguration(_currentConfig.Actuators[deviceIndex - 1]);
             }
-            _master?.Dispose();
-        }
-
-        static bool CheckConnection()
-        {
-            if (_master == null || !_master.IsConnected)
+            else
             {
-                if (_isSimulationMode)
-                    Console.WriteLine("\nNo simulated devices. Create simulated devices first.");
-                else
-                    Console.WriteLine("\nNot connected. Connect to a COM port first.");
-                return false;
+                Console.WriteLine("Invalid selection");
             }
-            return true;
         }
 
-        static Parity GetParityFromInt(int value)
+        static void EditDeviceConfiguration(ActuatorConfig config)
         {
-            return value switch
+            while (true)
             {
-                1 => Parity.Even,
-                2 => Parity.Odd,
-                _ => Parity.None
-            };
+                Console.WriteLine($"\n--- Edit Device {config.SlaveId} Configuration ---");
+                Console.WriteLine("1. Basic Settings (Torque, Position Limits)");
+                Console.WriteLine("2. Register 11 Flags (EHO, Input Functions, Polarities, Triggers)");
+                Console.WriteLine("3. Register 12 Flags (Torque, Display, Inhibits, ESD, Speed)");
+                Console.WriteLine("4. Control Configuration (Control Mode, Modulation, Deadband)");
+                Console.WriteLine("5. Relay Configuration (9 Relays)");
+                Console.WriteLine("6. Additional Functions (Failsafe, ESD, Loss Comm)");
+                Console.WriteLine("7. Network Settings (Baud Rate, Parity, Response Delay)");
+                Console.WriteLine("0. Back");
+                Console.Write("\nSelect option: ");
+
+                var choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1":
+                        EditBasicSettings(config);
+                        break;
+                    case "2":
+                        EditRegister11Flags(config.Config);
+                        break;
+                    case "3":
+                        EditRegister12Flags(config.Config);
+                        break;
+                    case "4":
+                        EditControlConfiguration(config.Config);
+                        break;
+                    case "5":
+                        EditRelayConfiguration(config.Config);
+                        break;
+                    case "6":
+                        EditAdditionalFunctions(config.Config);
+                        break;
+                    case "7":
+                        EditNetworkSettings(config.Config);
+                        break;
+                    case "0":
+                        return;
+                    default:
+                        Console.WriteLine("Invalid option");
+                        break;
+                }
+            }
         }
 
-        static StopBits GetStopBitsFromInt(int value)
+        static void EditBasicSettings(ActuatorConfig config)
         {
-            return value == 2 ? StopBits.Two : StopBits.One;
+            Console.WriteLine($"\n--- Basic Settings ---");
+            Console.WriteLine($"Current: Close Torque={config.CloseTorque}, Open Torque={config.OpenTorque}");
+            Console.WriteLine($"         Min Position={config.MinPosition}, Max Position={config.MaxPosition}");
+
+            Console.Write("\nEnter Close Torque (15-100) or press Enter to keep: ");
+            var input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.CloseTorque = ushort.Parse(input);
+
+            Console.Write("Enter Open Torque (15-100) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.OpenTorque = ushort.Parse(input);
+
+            Console.Write("Enter Min Position (0-4095) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.MinPosition = ushort.Parse(input);
+
+            Console.Write("Enter Max Position (0-4095) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.MaxPosition = ushort.Parse(input);
+
+            Console.WriteLine("Basic settings updated.");
         }
+
+        static void EditRegister11Flags(DeviceConfig config)
+        {
+            Console.WriteLine($"\n--- Register 11 Flags ---");
+            Console.WriteLine($"1. EHO Type: {config.EhoType}");
+            Console.WriteLine($"2. Local Input Function: {config.LocalInputFunction}");
+            Console.WriteLine($"3. Remote Input Function: {config.RemoteInputFunction}");
+            Console.WriteLine($"4. Remote ESD Enabled: {config.RemoteEsdEnabled}");
+            Console.WriteLine($"5. Loss Comm Enabled: {config.LossCommEnabled}");
+            Console.WriteLine($"6. AI1 Polarity: {config.Ai1Polarity}");
+            Console.WriteLine($"7. AI2 Polarity: {config.Ai2Polarity}");
+            Console.WriteLine($"8. AO1 Polarity: {config.Ao1Polarity}");
+            Console.WriteLine($"9. AO2 Polarity: {config.Ao2Polarity}");
+            Console.WriteLine($"10. DI1 Open Trigger: {config.Di1OpenTrigger}");
+            Console.WriteLine($"11. DI2 Close Trigger: {config.Di2CloseTrigger}");
+            Console.WriteLine($"12. DI3 Stop Trigger: {config.Di3StopTrigger}");
+            Console.WriteLine($"13. DI4 ESD Trigger: {config.Di4EsdTrigger}");
+            Console.WriteLine($"14. DI5 PST Trigger: {config.Di5PstTrigger}");
+            Console.WriteLine($"15. Close Direction: {config.CloseDirection}");
+            Console.WriteLine($"16. Seat Mode: {config.Seat}");
+            Console.Write("\nEnter number to toggle (0 to exit): ");
+
+            if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= 16)
+            {
+                switch (choice)
+                {
+                    case 1: config.EhoType = config.EhoType == EhoType.DoubleAction ? EhoType.SpringReturn : EhoType.DoubleAction; break;
+                    case 2: config.LocalInputFunction = config.LocalInputFunction == InputFunction.Maintained ? InputFunction.Momentary : InputFunction.Maintained; break;
+                    case 3: config.RemoteInputFunction = config.RemoteInputFunction == InputFunction.Maintained ? InputFunction.Momentary : InputFunction.Maintained; break;
+                    case 4: config.RemoteEsdEnabled = config.RemoteEsdEnabled == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 5: config.LossCommEnabled = config.LossCommEnabled == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 6: config.Ai1Polarity = config.Ai1Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal; break;
+                    case 7: config.Ai2Polarity = config.Ai2Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal; break;
+                    case 8: config.Ao1Polarity = config.Ao1Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal; break;
+                    case 9: config.Ao2Polarity = config.Ao2Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal; break;
+                    case 10: config.Di1OpenTrigger = config.Di1OpenTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
+                    case 11: config.Di2CloseTrigger = config.Di2CloseTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
+                    case 12: config.Di3StopTrigger = config.Di3StopTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
+                    case 13: config.Di4EsdTrigger = config.Di4EsdTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
+                    case 14: config.Di5PstTrigger = config.Di5PstTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
+                    case 15: config.CloseDirection = config.CloseDirection == CloseDirection.Clockwise ? CloseDirection.CounterClockwise : CloseDirection.Clockwise; break;
+                    case 16: config.Seat = config.Seat == SeatMode.Position ? SeatMode.Torque : SeatMode.Position; break;
+                }
+                Console.WriteLine("Updated.");
+            }
+        }
+
+        static void EditRegister12Flags(DeviceConfig config)
+        {
+            Console.WriteLine($"\n--- Register 12 Flags (Bits 0-13) ---");
+            Console.WriteLine($"1. Torque Backseat: {config.TorqueBackseat}");
+            Console.WriteLine($"2. Torque Retry: {config.TorqueRetry}");
+            Console.WriteLine($"3. Remote Display: {config.RemoteDisplay}");
+            Console.WriteLine($"4. LEDs: {config.Leds}");
+            Console.WriteLine($"5. Open Inhibit: {config.OpenInhibit}");
+            Console.WriteLine($"6. Close Inhibit: {config.CloseInhibit}");
+            Console.WriteLine($"7. Local ESD: {config.LocalEsd}");
+            Console.WriteLine($"8. ESD Or Thermal: {config.EsdOrThermal}");
+            Console.WriteLine($"9. ESD Or Local: {config.EsdOrLocal}");
+            Console.WriteLine($"10. ESD Or Stop: {config.EsdOrStop}");
+            Console.WriteLine($"11. ESD Or Inhibit: {config.EsdOrInhibit}");
+            Console.WriteLine($"12. ESD Or Torque: {config.EsdOrTorque}");
+            Console.WriteLine($"13. Close Speed Control: {config.CloseSpeedControl}");
+            Console.WriteLine($"14. Open Speed Control: {config.OpenSpeedControl}");
+            Console.Write("\nEnter number to toggle (0 to exit): ");
+
+            if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= 14)
+            {
+                switch (choice)
+                {
+                    case 1: config.TorqueBackseat = config.TorqueBackseat == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 2: config.TorqueRetry = config.TorqueRetry == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 3: config.RemoteDisplay = config.RemoteDisplay == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 4: config.Leds = config.Leds == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 5: config.OpenInhibit = config.OpenInhibit == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 6: config.CloseInhibit = config.CloseInhibit == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 7: config.LocalEsd = config.LocalEsd == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 8: config.EsdOrThermal = config.EsdOrThermal == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 9: config.EsdOrLocal = config.EsdOrLocal == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 10: config.EsdOrStop = config.EsdOrStop == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 11: config.EsdOrInhibit = config.EsdOrInhibit == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 12: config.EsdOrTorque = config.EsdOrTorque == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 13: config.CloseSpeedControl = config.CloseSpeedControl == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                    case 14: config.OpenSpeedControl = config.OpenSpeedControl == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
+                }
+                Console.WriteLine("Updated.");
+            }
+        }
+
+        static void EditControlConfiguration(DeviceConfig config)
+        {
+            Console.WriteLine($"\n--- Control Configuration ---");
+            Console.WriteLine($"Current: Control Mode={config.ControlMode}");
+            Console.WriteLine($"         Modulation Delay={config.ModulationDelay}");
+            Console.WriteLine($"         Deadband={config.Deadband}");
+            Console.WriteLine($"         Network Adapter={config.NetworkAdapter}");
+
+            Console.Write("\nEnter Control Mode (0-8) or press Enter to keep: ");
+            var input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.ControlMode = (ControlMode)int.Parse(input);
+
+            Console.Write("Enter Modulation Delay (0-255) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.ModulationDelay = byte.Parse(input);
+
+            Console.Write("Enter Deadband (0-255) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.Deadband = byte.Parse(input);
+
+            Console.Write("Enter Network Adapter (0-10) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.NetworkAdapter = (NetworkAdapter)int.Parse(input);
+
+            Console.WriteLine("Control configuration updated.");
+        }
+
+        static void EditRelayConfiguration(DeviceConfig config)
+        {
+            Console.WriteLine($"\n--- Relay Configuration (9 Relays) ---");
+            for (int i = 0; i < config.Relays.Count; i++)
+            {
+                var relay = config.Relays[i];
+                Console.WriteLine($"{i + 1}. Trigger={relay.trigger}, Mode={relay.mode}, Contact={relay.contact}");
+            }
+
+            Console.Write("\nEnter relay number to edit (0 to exit): ");
+            if (int.TryParse(Console.ReadLine(), out int relayNum) && relayNum > 0 && relayNum <= config.Relays.Count)
+            {
+                var relay = config.Relays[relayNum - 1];
+
+                Console.Write($"Enter Trigger (0-29, current={relay.trigger}): ");
+                var input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    relay.trigger = (RelayTrigger)int.Parse(input);
+
+                Console.Write($"Enter Mode (0=Continuous, 1=Flashing, current={relay.mode}): ");
+                input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    relay.mode = (RelayMode)int.Parse(input);
+
+                Console.Write($"Enter Contact Type (0=NormallyClosed, 1=NormallyOpen, current={relay.contact}): ");
+                input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    relay.contact = (RelayContactType)int.Parse(input);
+
+                config.Relays[relayNum - 1] = relay;
+                Console.WriteLine("Relay updated.");
+            }
+        }
+
+        static void EditAdditionalFunctions(DeviceConfig config)
+        {
+            Console.WriteLine($"\n--- Additional Functions ---");
+            Console.WriteLine($"Current: Failsafe Function={config.FailsafeFunction}");
+            Console.WriteLine($"         Failsafe Go To Position={config.FailsafeGoToPosition}");
+            Console.WriteLine($"         ESD Function={config.EsdFunction}");
+            Console.WriteLine($"         ESD Delay={config.EsdDelay}");
+            Console.WriteLine($"         Loss Comm Function={config.LossCommFunction}");
+            Console.WriteLine($"         Loss Comm Delay={config.LossCommDelay}");
+
+            Console.Write("\nEnter Failsafe Function (0-3) or press Enter to keep: ");
+            var input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.FailsafeFunction = (FunctionAction)int.Parse(input);
+
+            Console.Write("Enter Failsafe Go To Position (0-100) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.FailsafeGoToPosition = byte.Parse(input);
+
+            Console.Write("Enter ESD Function (0-3) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.EsdFunction = (FunctionAction)int.Parse(input);
+
+            Console.Write("Enter ESD Delay (0-255) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.EsdDelay = byte.Parse(input);
+
+            Console.Write("Enter Loss Comm Function (0-3) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.LossCommFunction = (FunctionAction)int.Parse(input);
+
+            Console.Write("Enter Loss Comm Delay (0-255) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.LossCommDelay = byte.Parse(input);
+
+            Console.WriteLine("Additional functions updated.");
+        }
+
+        static void EditNetworkSettings(DeviceConfig config)
+        {
+            Console.WriteLine($"\n--- Network Settings ---");
+            Console.WriteLine($"Current: Network Baud Rate={config.NetworkBaudRate}");
+            Console.WriteLine($"         Network Response Delay={config.NetworkResponseDelay}");
+            Console.WriteLine($"         Network Comm Parity={config.NetworkCommParity}");
+
+            Console.Write("\nEnter Network Baud Rate (0-5) or press Enter to keep: ");
+            var input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.NetworkBaudRate = (NetworkBaudRate)int.Parse(input);
+
+            Console.Write("Enter Network Response Delay (0-255) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.NetworkResponseDelay = byte.Parse(input);
+
+            Console.Write("Enter Network Comm Parity (0-2) or press Enter to keep: ");
+            input = Console.ReadLine();
+            if (!string.IsNullOrWhiteSpace(input)) config.NetworkCommParity = (NetworkCommParity)int.Parse(input);
+
+            Console.WriteLine("Network settings updated.");
+        }
+
     }
 }
