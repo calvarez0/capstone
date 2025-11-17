@@ -250,8 +250,7 @@
                                 Width="180"
                                 Cursor="Hand">
                             <StackPanel>
-                                <controls:BrayValveControl Position="100"
-                                                          ClosePosition="0"
+                                <controls:BrayValveControl Position="45.2"
                                                           DeviceAddress="1"
                                                           DeviceType="S/X"
                                                           StatusColor="Green"
@@ -288,7 +287,6 @@
                                 Cursor="Hand">
                             <StackPanel>
                                 <controls:BrayValveControl Position="78.5"
-                                                          ClosePosition="0"
                                                           DeviceAddress="2"
                                                           DeviceType="S/X"
                                                           StatusColor="Yellow"
@@ -325,7 +323,6 @@
                                 Cursor="Hand">
                             <StackPanel>
                                 <controls:BrayValveControl Position="22.1"
-                                                          ClosePosition="0"
                                                           DeviceAddress="3"
                                                           DeviceType="S/X"
                                                           StatusColor="Green"
@@ -362,7 +359,6 @@
                                 Cursor="Hand">
                             <StackPanel>
                                 <controls:BrayValveControl Position="0"
-                                                          ClosePosition="0"
                                                           DeviceAddress="4"
                                                           DeviceType="S/X"
                                                           StatusColor="Transparent"

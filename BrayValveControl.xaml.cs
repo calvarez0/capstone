@@ -13,10 +13,6 @@ namespace WPF_GUI
             DependencyProperty.Register("Position", typeof(double), typeof(BrayValveControl),
                 new PropertyMetadata(0.0, OnPositionChanged));
 
-        public static readonly DependencyProperty ClosePositionProperty =
-            DependencyProperty.Register("ClosePosition", typeof(double), typeof(BrayValveControl),
-                new PropertyMetadata(0.0, OnClosePositionChanged));
-
         public static readonly DependencyProperty DeviceAddressProperty =
             DependencyProperty.Register("DeviceAddress", typeof(int), typeof(BrayValveControl),
                 new PropertyMetadata(1, OnDeviceAddressChanged));
@@ -38,12 +34,6 @@ namespace WPF_GUI
         {
             get { return (double)GetValue(PositionProperty); }
             set { SetValue(PositionProperty, value); }
-        }
-
-        public double ClosePosition
-        {
-            get { return (double)GetValue(ClosePositionProperty); }
-            set { SetValue(ClosePositionProperty, value); }
         }
 
         public int DeviceAddress
@@ -82,12 +72,6 @@ namespace WPF_GUI
             control.UpdatePosition();
         }
 
-        private static void OnClosePositionChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-        {
-            var control = (BrayValveControl)d;
-            control.UpdateClosePosition();
-        }
-
         private static void OnDeviceAddressChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var control = (BrayValveControl)d;
@@ -115,7 +99,6 @@ namespace WPF_GUI
         private void UpdateVisuals()
         {
             UpdatePosition();
-            UpdateClosePosition();
             UpdateDeviceAddress();
             UpdateDeviceType();
             UpdateStatusColor();
@@ -130,42 +113,37 @@ namespace WPF_GUI
             }
         }
 
-        private void UpdateClosePosition()
-        {
-            if (TopPercentage != null)
-            {
-                TopPercentage.Text = $"{Math.Round(ClosePosition, 0)}%";
-            }
-        }
-
         private void UpdateDeviceAddress()
         {
-            if (NumberText != null)
+            if (AddressText != null)
             {
-                NumberText.Text = DeviceAddress.ToString();
+                AddressText.Text = DeviceAddress.ToString();
             }
         }
 
         private void UpdateDeviceType()
         {
-            if (BottomBox != null)
+            if (AddressBox != null && AddressText != null)
             {
                 // Light Blue (S/X), Orange (Nova), Purple (EH), or No Color
                 switch (DeviceType?.ToUpper())
                 {
                     case "S/X":
                     case "S7X":
-                        BottomBox.Background = new SolidColorBrush(Color.FromRgb(173, 216, 230)); // Light Blue
+                        AddressBox.Background = new SolidColorBrush(Color.FromRgb(173, 216, 230)); // Light Blue
+                        AddressText.Foreground = new SolidColorBrush(Color.FromRgb(44, 62, 80)); // Dark text
                         break;
                     case "NOVA":
-                        BottomBox.Background = new SolidColorBrush(Color.FromRgb(255, 165, 0)); // Orange
+                        AddressBox.Background = new SolidColorBrush(Color.FromRgb(255, 165, 0)); // Orange
+                        AddressText.Foreground = new SolidColorBrush(Color.FromRgb(44, 62, 80)); // Dark text
                         break;
                     case "EH":
-                        BottomBox.Background = new SolidColorBrush(Color.FromRgb(128, 0, 128)); // Purple
-                        NumberText.Foreground = Brushes.White; // White text for better contrast
+                        AddressBox.Background = new SolidColorBrush(Color.FromRgb(128, 0, 128)); // Purple
+                        AddressText.Foreground = Brushes.White; // White text for better contrast
                         break;
                     default:
-                        BottomBox.Background = Brushes.White;
+                        AddressBox.Background = Brushes.White;
+                        AddressText.Foreground = new SolidColorBrush(Color.FromRgb(44, 62, 80)); // Dark text
                         break;
                 }
             }
@@ -173,14 +151,17 @@ namespace WPF_GUI
 
         private void UpdateStatusColor()
         {
-            if (CenterCircle != null)
+            if (TopRectangleFill != null)
             {
-                CenterCircle.Fill = new SolidColorBrush(StatusColor);
+                TopRectangleFill.Color = StatusColor;
             }
-
-            if (ValveColorBorder != null && !IsBlinking)
+            if (CircleFill != null)
             {
-                ValveColorBorder.BorderBrush = new SolidColorBrush(StatusColor);
+                CircleFill.Color = StatusColor;
+            }
+            if (ConnectorFill != null)
+            {
+                ConnectorFill.Color = StatusColor;
             }
         }
 
@@ -196,14 +177,7 @@ namespace WPF_GUI
                 {
                     blinkStoryboard.Stop();
                     // Reset to solid color
-                    if (ValveColorBorder != null)
-                    {
-                        ValveColorBorder.BorderBrush = new SolidColorBrush(StatusColor);
-                    }
-                    if (CenterCircle != null)
-                    {
-                        CenterCircle.Fill = new SolidColorBrush(StatusColor);
-                    }
+                    UpdateStatusColor();
                 }
             }
         }

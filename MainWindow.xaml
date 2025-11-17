@@ -100,18 +100,17 @@
                        Stretch="Uniform"
                        Source="/Assets/Logo.png"/>
 
-                <!-- Title and Subtitle -->
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="BRAY INTERNATIONAL"
-                               FontSize="24"
-                               FontWeight="Bold"
-                               Foreground="White"/>
-                    <TextBlock Text="Actuator Configuration Software"
-                               FontSize="13"
-                               Foreground="White"
-                               Opacity="0.95"
-                               Margin="0,2,0,0"/>
-                </StackPanel>
+                <!-- Bray Logo -->
+                <Image Grid.Column="1"
+                       Height="45"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center"
+                       Stretch="Uniform"
+                       Source="/Assets/bray black.png">
+                    <Image.Effect>
+                        <DropShadowEffect Color="White" BlurRadius="8" Opacity="0.3" ShadowDepth="0"/>
+                    </Image.Effect>
+                </Image>
 
                 <!-- Mode Toggle -->
                 <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">

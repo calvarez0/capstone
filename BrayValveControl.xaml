@@ -4,90 +4,96 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d"
-             Width="80" Height="120">
+             Width="80" Height="110">
     <UserControl.Resources>
-        <!-- Blinking animation for movement/alarm -->
+        <!-- Blinking animation: 1 second no color, 1 second with color -->
         <Storyboard x:Key="BlinkAnimation" RepeatBehavior="Forever">
-            <ColorAnimationUsingKeyFrames Storyboard.TargetName="ValveColorBorder"
-                                         Storyboard.TargetProperty="(Border.BorderBrush).(SolidColorBrush.Color)"
+            <!-- Top Rectangle Fill -->
+            <ColorAnimationUsingKeyFrames Storyboard.TargetName="TopRectangleFill"
+                                         Storyboard.TargetProperty="Color"
                                          Duration="0:0:2">
                 <DiscreteColorKeyFrame KeyTime="0:0:0" Value="Transparent"/>
-                <DiscreteColorKeyFrame KeyTime="0:0:1" Value="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=StatusColor}"/>
+                <DiscreteColorKeyFrame KeyTime="0:0:1" Value="{Binding StatusColor, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
             </ColorAnimationUsingKeyFrames>
-            <ColorAnimationUsingKeyFrames Storyboard.TargetName="CenterCircle"
-                                         Storyboard.TargetProperty="(Ellipse.Fill).(SolidColorBrush.Color)"
+            <!-- Circle Fill -->
+            <ColorAnimationUsingKeyFrames Storyboard.TargetName="CircleFill"
+                                         Storyboard.TargetProperty="Color"
                                          Duration="0:0:2">
-                <DiscreteColorKeyFrame KeyTime="0:0:0" Value="White"/>
-                <DiscreteColorKeyFrame KeyTime="0:0:1" Value="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=StatusColor}"/>
+                <DiscreteColorKeyFrame KeyTime="0:0:0" Value="Transparent"/>
+                <DiscreteColorKeyFrame KeyTime="0:0:1" Value="{Binding StatusColor, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+            </ColorAnimationUsingKeyFrames>
+            <!-- Connector Fill -->
+            <ColorAnimationUsingKeyFrames Storyboard.TargetName="ConnectorFill"
+                                         Storyboard.TargetProperty="Color"
+                                         Duration="0:0:2">
+                <DiscreteColorKeyFrame KeyTime="0:0:0" Value="Transparent"/>
+                <DiscreteColorKeyFrame KeyTime="0:0:1" Value="{Binding StatusColor, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
             </ColorAnimationUsingKeyFrames>
         </Storyboard>
     </UserControl.Resources>
 
     <Grid>
-        <!-- Outer border for blinking effect -->
-        <Border x:Name="ValveColorBorder"
-                BorderThickness="3"
-                CornerRadius="8"
-                Padding="5">
-            <StackPanel HorizontalAlignment="Center">
-                <!-- Top Box - Close Position (0%) -->
-                <Border Background="#27ae60"
-                        BorderBrush="#2c3e50"
-                        BorderThickness="2"
-                        CornerRadius="4"
-                        Padding="8,4"
-                        Margin="0,0,0,2">
-                    <TextBlock x:Name="TopPercentage"
-                               Text="0%"
-                               FontSize="14"
-                               FontWeight="Bold"
-                               Foreground="White"
-                               HorizontalAlignment="Center"/>
-                </Border>
+        <StackPanel HorizontalAlignment="Center">
+            <!-- Valve Icon Silhouette -->
+            <Grid Width="80" Height="70">
+                <!-- Top Rectangle -->
+                <Rectangle Width="80" Height="25"
+                          VerticalAlignment="Top"
+                          HorizontalAlignment="Center">
+                    <Rectangle.Fill>
+                        <SolidColorBrush x:Name="TopRectangleFill" Color="Green"/>
+                    </Rectangle.Fill>
+                </Rectangle>
 
-                <!-- Middle Circle - Current Position Gauge -->
-                <Grid Width="50" Height="50" Margin="0,2">
-                    <!-- Outer ring -->
-                    <Ellipse Stroke="#2c3e50"
-                             StrokeThickness="3"
-                             Fill="White"/>
+                <!-- Connector/Stem -->
+                <Rectangle Width="20" Height="10"
+                          VerticalAlignment="Top"
+                          HorizontalAlignment="Center"
+                          Margin="0,25,0,0">
+                    <Rectangle.Fill>
+                        <SolidColorBrush x:Name="ConnectorFill" Color="Green"/>
+                    </Rectangle.Fill>
+                </Rectangle>
 
-                    <!-- Inner colored circle -->
-                    <Ellipse x:Name="CenterCircle"
-                             Width="38"
-                             Height="38"
-                             Fill="#27ae60">
-                        <Ellipse.Effect>
-                            <DropShadowEffect BlurRadius="4" Opacity="0.3"/>
-                        </Ellipse.Effect>
-                    </Ellipse>
+                <!-- Bottom Circle -->
+                <Ellipse Width="60" Height="60"
+                        VerticalAlignment="Bottom"
+                        HorizontalAlignment="Center">
+                    <Ellipse.Fill>
+                        <SolidColorBrush x:Name="CircleFill" Color="Green"/>
+                    </Ellipse.Fill>
+                </Ellipse>
 
-                    <!-- Current position text -->
-                    <TextBlock x:Name="PositionText"
-                               Text="100%"
-                               FontSize="12"
-                               FontWeight="Bold"
-                               Foreground="White"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"/>
-                </Grid>
+                <!-- Position Text on Circle -->
+                <TextBlock x:Name="PositionText"
+                          Text="100%"
+                          FontSize="14"
+                          FontWeight="Bold"
+                          Foreground="White"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Bottom"
+                          Margin="0,0,0,18">
+                    <TextBlock.Effect>
+                        <DropShadowEffect Color="Black" BlurRadius="3" Opacity="0.5" ShadowDepth="1"/>
+                    </TextBlock.Effect>
+                </TextBlock>
+            </Grid>
 
-                <!-- Bottom Box - Number with Type Color -->
-                <Border x:Name="BottomBox"
-                        Background="#ADD8E6"
-                        BorderBrush="#2c3e50"
-                        BorderThickness="2"
-                        CornerRadius="4"
-                        Padding="12,4"
-                        Margin="0,2,0,0">
-                    <TextBlock x:Name="NumberText"
-                               Text="7"
-                               FontSize="14"
-                               FontWeight="Bold"
-                               Foreground="#2c3e50"
-                               HorizontalAlignment="Center"/>
-                </Border>
-            </StackPanel>
-        </Border>
+            <!-- Address Box Below Icon -->
+            <Border x:Name="AddressBox"
+                   Background="#ADD8E6"
+                   BorderBrush="#2c3e50"
+                   BorderThickness="2"
+                   CornerRadius="4"
+                   Padding="15,5"
+                   Margin="0,5,0,0">
+                <TextBlock x:Name="AddressText"
+                          Text="1"
+                          FontSize="14"
+                          FontWeight="Bold"
+                          Foreground="#2c3e50"
+                          HorizontalAlignment="Center"/>
+            </Border>
+        </StackPanel>
     </Grid>
 </UserControl>
