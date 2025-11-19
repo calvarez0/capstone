@@ -89,6 +89,9 @@ namespace ModbusActuatorControl
                 // Read all status flags
                 status.Status.ReadFromDevice(_master, _slaveId);
 
+                // Read Product Identifier from Register 100
+                status.ProductIdentifier = _master.ReadHoldingRegisters(_slaveId, 100, 1)[0];
+
                 // Read torque settings from Register 112
                 var torqueReg = _master.ReadHoldingRegisters(_slaveId, 112, 1)[0];
                 status.CloseTorque = (ushort)((torqueReg >> 8) & 0xFF);
@@ -232,16 +235,25 @@ namespace ModbusActuatorControl
                     DeviceName = $"Actuator {_slaveId}"
                 };
 
-                // Read torque
-                var torqueReg = _master.ReadHoldingRegisters(_slaveId, 112, 1)[0];
-                config.CloseTorque = (ushort)((torqueReg >> 8) & 0xFF);
-                config.OpenTorque = (ushort)(torqueReg & 0xFF);
+                // Read Product Identifier
+                config.ProductIdentifier = _master.ReadHoldingRegisters(_slaveId, 100, 1)[0];
 
-                // Read PST Result
-                config.PstResult = (byte)_master.ReadHoldingRegisters(_slaveId, 29, 1)[0];
+                // Read torque (if available for this product)
+                if (ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 112))
+                {
+                    var torqueReg = _master.ReadHoldingRegisters(_slaveId, 112, 1)[0];
+                    config.CloseTorque = (ushort)((torqueReg >> 8) & 0xFF);
+                    config.OpenTorque = (ushort)(torqueReg & 0xFF);
+                }
 
-                // Read all device configuration
-                config.Config.ReadFromDevice(_master, _slaveId);
+                // Read PST Result (if available for this product)
+                if (ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 29))
+                {
+                    config.PstResult = (byte)_master.ReadHoldingRegisters(_slaveId, 29, 1)[0];
+                }
+
+                // Read all device configuration (pass product identifier for filtering)
+                config.Config.ReadFromDevice(_master, _slaveId, config.ProductIdentifier);
 
                 return config;
             }
@@ -257,6 +269,9 @@ namespace ModbusActuatorControl
     {
         public ushort Position { get; set; }
         public DateTime Timestamp { get; set; }
+
+        // Product Identifier from Register 100
+        public ushort ProductIdentifier { get; set; }
 
         // Torque settings from Register 112
         public ushort CloseTorque { get; set; }
@@ -293,145 +308,327 @@ namespace ModbusActuatorControl
                 _ => $"Unknown ({Status.PstResult})"
             };
 
+            // Convert Product Identifier to readable string
+            string productName = ProductCapabilities.GetProductName(ProductIdentifier);
+
             var details = $"=== Actuator Status (Updated: {Timestamp:HH:mm:ss}) ===\n" +
-                         $"Position: {Position}\n" +
-                         $"Close Torque: {CloseTorque}% (Register 112)\n" +
-                         $"Open Torque: {OpenTorque}% (Register 112)\n" +
-                         $"Valve Torque: {Status.ValveTorque} ({torquePercent:F2}%)\n" +
-                         $"PST Result: {pstResultText}\n" +
-                         $"Analog Input 1: {Status.AnalogInput1}\n" +
-                         $"Analog Input 2: {Status.AnalogInput2}\n" +
-                         $"Analog Output 1: {Status.AnalogOutput1}\n" +
-                         $"Analog Output 2: {Status.AnalogOutput2}\n" +
-                         $"Moving: {IsMoving}\n" +
-                         $"Has Alarms: {HasAnyAlarm}\n\n";
+                         $"Product: {productName} (0x{ProductIdentifier:X4})\n" +
+                         $"Position: {Position}\n";
 
-            details += "=== Alarms (Register 0-2) ===\n";
-            details += $"Stall Alarm: {Status.StallAlarm}\n";
-            details += $"Valve Drift Alarm: {Status.ValveDriftAlarm}\n";
-            details += $"ESD Active Alarm: {Status.EsdActiveAlarm}\n";
-            details += $"Motor Thermal Alarm: {Status.MotorThermalAlarm}\n";
-            details += $"Loss of Power Alarm: {Status.LossOfPowerAlarm}\n";
-            details += $"Loss of Signal Alarm: {Status.LossOfSignalAlarm}\n";
-            details += $"Low Oil Alarm: {Status.LowOilAlarm}\n";
-            details += $"Unit Alarm 1: {Status.UnitAlarm1}\n";
-            details += $"Unit Alarm 2: {Status.UnitAlarm2}\n";
-            details += $"SPH Exceeded: {Status.SphExceeded}\n";
-            details += $"Unit Alert: {Status.UnitAlert}\n\n";
+            // Only show torque if register 112 is available
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 112))
+            {
+                details += $"Close Torque: {CloseTorque}% (Register 112)\n";
+                details += $"Open Torque: {OpenTorque}% (Register 112)\n";
+            }
 
-            details += "=== Operating Status (Register 3) ===\n";
-            details += $"Limit Switch Open: {Status.LimitSwitchOpen}\n";
-            details += $"Limit Switch Close: {Status.LimitSwitchClose}\n";
-            details += $"Torque Switch Open: {Status.TorqueSwitchOpen}\n";
-            details += $"Torque Switch Close: {Status.TorqueSwitchClose}\n";
-            details += $"Valve Opening: {Status.ValveOpening}\n";
-            details += $"Valve Closing: {Status.ValveClosing}\n";
-            details += $"Local Mode: {Status.LocalMode}\n";
-            details += $"Remote Mode: {Status.RemoteMode}\n";
-            details += $"Stop Mode: {Status.StopMode}\n";
-            details += $"Setup Mode: {Status.SetupMode}\n";
-            details += $"Handwheel Pulled Out: {Status.HandwheelPulledOut}\n\n";
+            // Only show valve torque if register 24 is available
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 24))
+            {
+                details += $"Valve Torque: {Status.ValveTorque} ({torquePercent:F2}%)\n";
+            }
 
-            details += "=== Relay Status (Register 4) ===\n";
-            details += $"Relay 1: {Status.Relay1Status}\n";
-            details += $"Relay 2: {Status.Relay2Status}\n";
-            details += $"Relay 3: {Status.Relay3Status}\n";
-            details += $"Relay 4: {Status.Relay4Status}\n";
-            details += $"Relay 5 Monitor: {Status.Relay5MonitorStatus}\n";
-            details += $"Relay 6: {Status.Relay6Status}\n";
-            details += $"Relay 7: {Status.Relay7Status}\n";
-            details += $"Relay 8: {Status.Relay8Status}\n";
-            details += $"Relay 9: {Status.Relay9Status}\n\n";
+            // Only show PST result if register 29 is available
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 29))
+            {
+                details += $"PST Result: {pstResultText}\n";
+            }
 
-            details += "=== Digital Input Status (Register 4) ===\n";
-            details += $"DI1 Open: {Status.Di1OpenStatus}\n";
-            details += $"DI2 Close: {Status.Di2CloseStatus}\n";
-            details += $"DI3 Stop: {Status.Di3StopStatus}\n";
-            details += $"DI4 ESD: {Status.Di4EsdStatus}\n";
-            details += $"DI5 PST: {Status.Di5PstStatus}\n\n";
+            details += $"Analog Input 1: {Status.AnalogInput1}\n";
+            details += $"Analog Input 2: {Status.AnalogInput2}\n";
+            details += $"Analog Output 1: {Status.AnalogOutput1}\n";
 
-            details += "=== Host Commands (Register 10) ===\n";
-            details += $"Host Open Cmd: {Status.HostOpenCmd}\n";
-            details += $"Host Close Cmd: {Status.HostCloseCmd}\n";
-            details += $"Host Stop Cmd: {Status.HostStopCmd}\n";
-            details += $"Host ESD Cmd: {Status.HostEsdCmd}\n";
-            details += $"Host PST Cmd: {Status.HostPstCmd}\n";
-            details += $"Soft Setup Cmd: {Status.SoftSetupCmd}\n\n";
+            // Only show Analog Output 2 if register 28 is available
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 28))
+            {
+                details += $"Analog Output 2: {Status.AnalogOutput2}\n";
+            }
 
-            details += "=== Configuration (Register 11) ===\n";
-            details += $"EHO Type: {Config.EhoType}\n";
-            details += $"Local Input Function: {Config.LocalInputFunction}\n";
-            details += $"Remote Input Function: {Config.RemoteInputFunction}\n";
-            details += $"Remote ESD Enabled: {Config.RemoteEsdEnabled}\n";
-            details += $"Loss Comm Enabled: {Config.LossCommEnabled}\n";
-            details += $"AI1 Polarity: {Config.Ai1Polarity}\n";
-            details += $"AI2 Polarity: {Config.Ai2Polarity}\n";
-            details += $"AO1 Polarity: {Config.Ao1Polarity}\n";
-            details += $"AO2 Polarity: {Config.Ao2Polarity}\n";
-            details += $"DI1 Open Trigger: {Config.Di1OpenTrigger}\n";
-            details += $"DI2 Close Trigger: {Config.Di2CloseTrigger}\n";
-            details += $"DI3 Stop Trigger: {Config.Di3StopTrigger}\n";
-            details += $"DI4 ESD Trigger: {Config.Di4EsdTrigger}\n";
-            details += $"DI5 PST Trigger: {Config.Di5PstTrigger}\n";
-            details += $"Close Direction: {Config.CloseDirection}\n";
-            details += $"Seat Mode: {Config.Seat}\n\n";
+            details += $"Moving: {IsMoving}\n";
+            details += $"Has Alarms: {HasAnyAlarm}\n\n";
 
-            details += "=== Configuration (Register 12) ===\n";
-            details += $"Torque Backseat: {Config.TorqueBackseat}\n";
-            details += $"Torque Retry: {Config.TorqueRetry}\n";
-            details += $"Remote Display: {Config.RemoteDisplay}\n";
-            details += $"LEDs: {Config.Leds}\n";
-            details += $"Open Inhibit: {Config.OpenInhibit}\n";
-            details += $"Close Inhibit: {Config.CloseInhibit}\n";
-            details += $"Local ESD: {Config.LocalEsd}\n";
-            details += $"ESD Or Thermal: {Config.EsdOrThermal}\n";
-            details += $"ESD Or Local: {Config.EsdOrLocal}\n";
-            details += $"ESD Or Stop: {Config.EsdOrStop}\n";
-            details += $"ESD Or Inhibit: {Config.EsdOrInhibit}\n";
-            details += $"ESD Or Torque: {Config.EsdOrTorque}\n";
-            details += $"Close Speed Control: {Config.CloseSpeedControl}\n";
-            details += $"Open Speed Control: {Config.OpenSpeedControl}\n\n";
+            // Alarms section - filter based on available bits
+            string alarmsSection = "";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 0, 0))
+                alarmsSection += $"Stall Alarm: {Status.StallAlarm}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 0, 1))
+                alarmsSection += $"Valve Drift Alarm: {Status.ValveDriftAlarm}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 0, 2))
+                alarmsSection += $"ESD Active Alarm: {Status.EsdActiveAlarm}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 0, 3))
+                alarmsSection += $"Motor Thermal Alarm: {Status.MotorThermalAlarm}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 1, 8))
+                alarmsSection += $"Loss of Power Alarm: {Status.LossOfPowerAlarm}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 1, 9))
+                alarmsSection += $"Loss of Signal Alarm: {Status.LossOfSignalAlarm}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 1, 10))
+                alarmsSection += $"Low Oil Alarm: {Status.LowOilAlarm}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 1, 11))
+                alarmsSection += $"Unit Alarm 1: {Status.UnitAlarm1}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 1, 12))
+                alarmsSection += $"Unit Alarm 2: {Status.UnitAlarm2}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 1, 13))
+                alarmsSection += $"SPH Exceeded: {Status.SphExceeded}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 1, 14))
+                alarmsSection += $"Unit Alert: {Status.UnitAlert}\n";
 
-            details += "=== Control Configuration (Registers 101-102) ===\n";
-            details += $"Control Mode: {Config.ControlMode}\n";
-            details += $"Modulation Delay: {Config.ModulationDelay}\n";
-            details += $"Deadband: {Config.Deadband}\n";
-            details += $"Network Adapter: {Config.NetworkAdapter}\n\n";
+            if (alarmsSection.Length > 0)
+            {
+                details += "=== Alarms (Register 0-2) ===\n";
+                details += alarmsSection + "\n";
+            }
 
-            details += "=== Additional Functions (Registers 107-110) ===\n";
-            details += $"Failsafe Function: {Config.FailsafeFunction}\n";
-            details += $"Failsafe Go To Position: {Config.FailsafeGoToPosition}\n";
-            details += $"ESD Function: {Config.EsdFunction}\n";
-            details += $"ESD Delay: {Config.EsdDelay}\n";
-            details += $"Loss Comm Function: {Config.LossCommFunction}\n";
-            details += $"Loss Comm Delay: {Config.LossCommDelay}\n\n";
+            // Operating Status (Register 3) - filter based on available bits
+            string operatingSection = "";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 0))
+                operatingSection += $"Limit Switch Open: {Status.LimitSwitchOpen}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 1))
+                operatingSection += $"Limit Switch Close: {Status.LimitSwitchClose}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 2))
+                operatingSection += $"Torque Switch Open: {Status.TorqueSwitchOpen}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 3))
+                operatingSection += $"Torque Switch Close: {Status.TorqueSwitchClose}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 4))
+                operatingSection += $"Valve Opening: {Status.ValveOpening}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 5))
+                operatingSection += $"Valve Closing: {Status.ValveClosing}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 6))
+                operatingSection += $"Local Mode: {Status.LocalMode}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 7))
+                operatingSection += $"Remote Mode: {Status.RemoteMode}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 8))
+                operatingSection += $"Stop Mode: {Status.StopMode}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 9))
+                operatingSection += $"Setup Mode: {Status.SetupMode}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 3, 10))
+                operatingSection += $"Handwheel Pulled Out: {Status.HandwheelPulledOut}\n";
 
+            if (operatingSection.Length > 0)
+            {
+                details += "=== Operating Status (Register 3) ===\n";
+                details += operatingSection + "\n";
+            }
+
+            // Relay Status (Register 4) - filter based on available bits
+            string relaySection = "";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 0))
+                relaySection += $"Relay 1: {Status.Relay1Status}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 1))
+                relaySection += $"Relay 2: {Status.Relay2Status}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 2))
+                relaySection += $"Relay 3: {Status.Relay3Status}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 3))
+                relaySection += $"Relay 4: {Status.Relay4Status}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 4))
+                relaySection += $"Relay 5 Monitor: {Status.Relay5MonitorStatus}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 5))
+                relaySection += $"Relay 6: {Status.Relay6Status}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 6))
+                relaySection += $"Relay 7: {Status.Relay7Status}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 7))
+                relaySection += $"Relay 8: {Status.Relay8Status}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 8))
+                relaySection += $"Relay 9: {Status.Relay9Status}\n";
+
+            // Digital Input Status (Register 4)
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 9))
+                relaySection += $"DI1 Open: {Status.Di1OpenStatus}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 10))
+                relaySection += $"DI2 Close: {Status.Di2CloseStatus}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 11))
+                relaySection += $"DI3 Stop: {Status.Di3StopStatus}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 12))
+                relaySection += $"DI4 ESD: {Status.Di4EsdStatus}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 4, 13))
+                relaySection += $"DI5 PST: {Status.Di5PstStatus}\n";
+
+            if (relaySection.Length > 0)
+            {
+                details += "=== Relay & Digital Input Status (Register 4) ===\n";
+                details += relaySection + "\n";
+            }
+
+            // Host Commands (Register 10) - filter based on available bits
+            string hostCmdSection = "";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 10, 0))
+                hostCmdSection += $"Host Open Cmd: {Status.HostOpenCmd}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 10, 1))
+                hostCmdSection += $"Host Close Cmd: {Status.HostCloseCmd}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 10, 2))
+                hostCmdSection += $"Host Stop Cmd: {Status.HostStopCmd}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 10, 3))
+                hostCmdSection += $"Host ESD Cmd: {Status.HostEsdCmd}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 10, 4))
+                hostCmdSection += $"Host PST Cmd: {Status.HostPstCmd}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 10, 15))
+                hostCmdSection += $"Soft Setup Cmd: {Status.SoftSetupCmd}\n";
+
+            if (hostCmdSection.Length > 0)
+            {
+                details += "=== Host Commands (Register 10) ===\n";
+                details += hostCmdSection + "\n";
+            }
+
+            // Configuration (Register 11) - filter based on available bits
+            string reg11Section = "";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 0))
+                reg11Section += $"EHO Type: {Config.EhoType}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 1))
+                reg11Section += $"Local Input Function: {Config.LocalInputFunction}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 2))
+                reg11Section += $"Remote Input Function: {Config.RemoteInputFunction}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 3))
+                reg11Section += $"Remote ESD Enabled: {Config.RemoteEsdEnabled}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 4))
+                reg11Section += $"Loss Comm Enabled: {Config.LossCommEnabled}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 5))
+                reg11Section += $"AI1 Polarity: {Config.Ai1Polarity}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 6))
+                reg11Section += $"AI2 Polarity: {Config.Ai2Polarity}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 7))
+                reg11Section += $"AO1 Polarity: {Config.Ao1Polarity}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 8))
+                reg11Section += $"AO2 Polarity: {Config.Ao2Polarity}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 9))
+                reg11Section += $"DI1 Open Trigger: {Config.Di1OpenTrigger}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 10))
+                reg11Section += $"DI2 Close Trigger: {Config.Di2CloseTrigger}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 11))
+                reg11Section += $"DI3 Stop Trigger: {Config.Di3StopTrigger}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 12))
+                reg11Section += $"DI4 ESD Trigger: {Config.Di4EsdTrigger}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 13))
+                reg11Section += $"DI5 PST Trigger: {Config.Di5PstTrigger}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 14))
+                reg11Section += $"Close Direction: {Config.CloseDirection}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 11, 15))
+                reg11Section += $"Seat Mode: {Config.Seat}\n";
+
+            if (reg11Section.Length > 0)
+            {
+                details += "=== Configuration (Register 11) ===\n";
+                details += reg11Section + "\n";
+            }
+
+            // Configuration (Register 12) - filter based on available bits
+            string reg12Section = "";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 0))
+                reg12Section += $"Torque Backseat: {Config.TorqueBackseat}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 1))
+                reg12Section += $"Torque Retry: {Config.TorqueRetry}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 2))
+                reg12Section += $"Remote Display: {Config.RemoteDisplay}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 3))
+                reg12Section += $"LEDs: {Config.Leds}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 4))
+                reg12Section += $"Open Inhibit: {Config.OpenInhibit}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 5))
+                reg12Section += $"Close Inhibit: {Config.CloseInhibit}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 6))
+                reg12Section += $"Local ESD: {Config.LocalEsd}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 7))
+                reg12Section += $"ESD Or Thermal: {Config.EsdOrThermal}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 8))
+                reg12Section += $"ESD Or Local: {Config.EsdOrLocal}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 9))
+                reg12Section += $"ESD Or Stop: {Config.EsdOrStop}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 10))
+                reg12Section += $"ESD Or Inhibit: {Config.EsdOrInhibit}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 11))
+                reg12Section += $"ESD Or Torque: {Config.EsdOrTorque}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 12))
+                reg12Section += $"Close Speed Control: {Config.CloseSpeedControl}\n";
+            if (ProductCapabilities.IsBitAvailable(ProductIdentifier, 12, 13))
+                reg12Section += $"Open Speed Control: {Config.OpenSpeedControl}\n";
+
+            if (reg12Section.Length > 0)
+            {
+                details += "=== Configuration (Register 12) ===\n";
+                details += reg12Section + "\n";
+            }
+
+            // Control Configuration (Registers 101-102) - only show if available
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 101) ||
+                ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 102))
+            {
+                details += "=== Control Configuration (Registers 101-102) ===\n";
+                details += $"Control Mode: {Config.ControlMode}\n";
+                details += $"Modulation Delay: {Config.ModulationDelay}\n";
+                details += $"Deadband: {Config.Deadband}\n";
+                details += $"Network Adapter: {Config.NetworkAdapter}\n\n";
+            }
+
+            // Additional Functions (Registers 107-110) - build section conditionally
+            string additionalFunctionsSection = "";
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 107))
+            {
+                additionalFunctionsSection += $"Failsafe Function: {Config.FailsafeFunction}\n";
+                // Check if lower half of Register 107 is available
+                if (ProductCapabilities.IsRegister107LowerHalfAvailable(ProductIdentifier))
+                {
+                    additionalFunctionsSection += $"Failsafe Go To Position: {Config.FailsafeGoToPosition}\n";
+                }
+            }
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 108))
+            {
+                additionalFunctionsSection += $"ESD Function: {Config.EsdFunction}\n";
+                additionalFunctionsSection += $"ESD Delay: {Config.EsdDelay}\n";
+            }
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 109))
+            {
+                additionalFunctionsSection += $"Loss Comm Function: {Config.LossCommFunction}\n";
+                additionalFunctionsSection += $"Loss Comm Delay: {Config.LossCommDelay}\n";
+            }
+
+            if (additionalFunctionsSection.Length > 0)
+            {
+                details += "=== Additional Functions (Registers 107-110) ===\n";
+                details += additionalFunctionsSection + "\n";
+            }
+
+            // Network Settings (Registers 110-111) - always available
             details += "=== Network Settings (Registers 110-111) ===\n";
             details += $"Network Baud Rate: {Config.NetworkBaudRate}\n";
             details += $"Network Response Delay: {Config.NetworkResponseDelay}\n";
             details += $"Network Comm Parity: {Config.NetworkCommParity}\n\n";
 
-            details += "=== Limit Switch Settings (Register 113) ===\n";
-            details += $"LSA (Limit Switch A): {Config.LSA}%\n";
-            details += $"LSB (Limit Switch B): {Config.LSB}%\n\n";
+            // Limit Switch Settings (Register 113) - only show if available
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 113))
+            {
+                details += "=== Limit Switch Settings (Register 113) ===\n";
+                details += $"LSA (Limit Switch A): {Config.LSA}%\n";
+                details += $"LSB (Limit Switch B): {Config.LSB}%\n\n";
+            }
 
-            details += "=== Open Speed Control (Register 114) ===\n";
-            details += $"Open Speed Control Start: {Config.OpenSpeedControlStart}%\n";
-            details += $"Open Speed Control Ratio: {Config.OpenSpeedControlRatio}%\n\n";
+            // Open Speed Control (Register 114) - only show if available
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 114))
+            {
+                details += "=== Open Speed Control (Register 114) ===\n";
+                details += $"Open Speed Control Start: {Config.OpenSpeedControlStart}%\n";
+                details += $"Open Speed Control Ratio: {Config.OpenSpeedControlRatio}%\n\n";
+            }
 
-            details += "=== Close Speed Control (Register 115) ===\n";
-            details += $"Close Speed Control Start: {Config.CloseSpeedControlStart}%\n";
-            details += $"Close Speed Control Ratio: {Config.CloseSpeedControlRatio}%\n\n";
+            // Close Speed Control (Register 115) - only show if available
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 115))
+            {
+                details += "=== Close Speed Control (Register 115) ===\n";
+                details += $"Close Speed Control Start: {Config.CloseSpeedControlStart}%\n";
+                details += $"Close Speed Control Ratio: {Config.CloseSpeedControlRatio}%\n\n";
+            }
 
-            details += "=== Calibration Values (Registers 500-507) ===\n";
-            details += $"Analog Input 1 Zero Calibration: {Config.AnalogInput1ZeroCalibration} ({Config.AnalogInput1ZeroCalibration * 0.024:F2}%)\n";
-            details += $"Analog Input 1 Span Calibration: {Config.AnalogInput1SpanCalibration} ({Config.AnalogInput1SpanCalibration * 0.024:F2}%)\n";
-            details += $"Analog Input 2 Zero Calibration: {Config.AnalogInput2ZeroCalibration} ({Config.AnalogInput2ZeroCalibration * 0.024:F2}%)\n";
-            details += $"Analog Input 2 Span Calibration: {Config.AnalogInput2SpanCalibration} ({Config.AnalogInput2SpanCalibration * 0.024:F2}%)\n";
-            details += $"Analog Output 1 Zero Calibration: {Config.AnalogOutput1ZeroCalibration} ({Config.AnalogOutput1ZeroCalibration * 0.024:F2}%)\n";
-            details += $"Analog Output 1 Span Calibration: {Config.AnalogOutput1SpanCalibration} ({Config.AnalogOutput1SpanCalibration * 0.024:F2}%)\n";
-            details += $"Analog Output 2 Zero Calibration: {Config.AnalogOutput2ZeroCalibration} ({Config.AnalogOutput2ZeroCalibration * 0.024:F2}%)\n";
-            details += $"Analog Output 2 Span Calibration: {Config.AnalogOutput2SpanCalibration} ({Config.AnalogOutput2SpanCalibration * 0.024:F2}%)\n";
+            // Calibration Values (Registers 500-507) - only show if available
+            if (ProductCapabilities.IsRegisterAvailable(ProductIdentifier, 500))
+            {
+                details += "=== Calibration Values (Registers 500-507) ===\n";
+                details += $"Analog Input 1 Zero Calibration: {Config.AnalogInput1ZeroCalibration} ({Config.AnalogInput1ZeroCalibration * 0.024:F2}%)\n";
+                details += $"Analog Input 1 Span Calibration: {Config.AnalogInput1SpanCalibration} ({Config.AnalogInput1SpanCalibration * 0.024:F2}%)\n";
+                details += $"Analog Input 2 Zero Calibration: {Config.AnalogInput2ZeroCalibration} ({Config.AnalogInput2ZeroCalibration * 0.024:F2}%)\n";
+                details += $"Analog Input 2 Span Calibration: {Config.AnalogInput2SpanCalibration} ({Config.AnalogInput2SpanCalibration * 0.024:F2}%)\n";
+                details += $"Analog Output 1 Zero Calibration: {Config.AnalogOutput1ZeroCalibration} ({Config.AnalogOutput1ZeroCalibration * 0.024:F2}%)\n";
+                details += $"Analog Output 1 Span Calibration: {Config.AnalogOutput1SpanCalibration} ({Config.AnalogOutput1SpanCalibration * 0.024:F2}%)\n";
+                details += $"Analog Output 2 Zero Calibration: {Config.AnalogOutput2ZeroCalibration} ({Config.AnalogOutput2ZeroCalibration * 0.024:F2}%)\n";
+                details += $"Analog Output 2 Span Calibration: {Config.AnalogOutput2SpanCalibration} ({Config.AnalogOutput2SpanCalibration * 0.024:F2}%)\n";
+            }
 
             return details;
         }
