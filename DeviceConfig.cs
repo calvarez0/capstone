@@ -122,6 +122,28 @@ namespace ModbusActuatorControl
         public byte NetworkResponseDelay { get; set; } = 8;
         public NetworkCommParity NetworkCommParity { get; set; }
 
+        // Register 113 (LSA and LSB)
+        public byte LSA { get; set; } = 25; // Range 1-99, units = %
+        public byte LSB { get; set; } = 75; // Range 1-99, units = %
+
+        // Register 114 (Open Speed Control)
+        public byte OpenSpeedControlStart { get; set; } = 70; // Range 5-95, must be multiple of 5, units = %
+        public byte OpenSpeedControlRatio { get; set; } = 50; // Range 5-95, must be multiple of 5, units = %
+
+        // Register 115 (Close Speed Control)
+        public byte CloseSpeedControlStart { get; set; } = 30; // Range 5-95, must be multiple of 5, units = %
+        public byte CloseSpeedControlRatio { get; set; } = 50; // Range 5-95, must be multiple of 5, units = %
+
+        // Registers 500-507 (Calibration values - 0.024% units, range 0-4095)
+        public ushort AnalogInput1ZeroCalibration { get; set; } = 0;
+        public ushort AnalogInput1SpanCalibration { get; set; } = 4095;
+        public ushort AnalogInput2ZeroCalibration { get; set; } = 0;
+        public ushort AnalogInput2SpanCalibration { get; set; } = 4095;
+        public ushort AnalogOutput1ZeroCalibration { get; set; } = 0;
+        public ushort AnalogOutput1SpanCalibration { get; set; } = 4095;
+        public ushort AnalogOutput2ZeroCalibration { get; set; } = 0;
+        public ushort AnalogOutput2SpanCalibration { get; set; } = 4095;
+
         public DeviceConfig()
         {
             // Defaults for Register 11
@@ -256,6 +278,26 @@ namespace ModbusActuatorControl
             NetworkBaudRate = (NetworkBaudRate)(regs103_111[7] & 0xFF); // Reg 110 LH
             NetworkResponseDelay = (byte)((regs103_111[8] >> 8) & 0xFF); // Reg 111 UH
             NetworkCommParity = (NetworkCommParity)(regs103_111[8] & 0xFF); // Reg 111 LH
+
+            // Registers 113-115 (LSA/LSB and Speed Control)
+            var regs113_115 = master.ReadHoldingRegisters(slaveId, 113, 3);
+            LSA = (byte)((regs113_115[0] >> 8) & 0xFF); // Reg 113 UH
+            LSB = (byte)(regs113_115[0] & 0xFF); // Reg 113 LH
+            OpenSpeedControlStart = (byte)((regs113_115[1] >> 8) & 0xFF); // Reg 114 UH
+            OpenSpeedControlRatio = (byte)(regs113_115[1] & 0xFF); // Reg 114 LH
+            CloseSpeedControlStart = (byte)((regs113_115[2] >> 8) & 0xFF); // Reg 115 UH
+            CloseSpeedControlRatio = (byte)(regs113_115[2] & 0xFF); // Reg 115 LH
+
+            // Registers 500-507 (Calibration values)
+            var calibrationRegs = master.ReadHoldingRegisters(slaveId, 500, 8);
+            AnalogInput1ZeroCalibration = calibrationRegs[0];
+            AnalogInput1SpanCalibration = calibrationRegs[1];
+            AnalogInput2ZeroCalibration = calibrationRegs[2];
+            AnalogInput2SpanCalibration = calibrationRegs[3];
+            AnalogOutput1ZeroCalibration = calibrationRegs[4];
+            AnalogOutput1SpanCalibration = calibrationRegs[5];
+            AnalogOutput2ZeroCalibration = calibrationRegs[6];
+            AnalogOutput2SpanCalibration = calibrationRegs[7];
         }
 
         // Write all config registers to device
@@ -317,6 +359,85 @@ namespace ModbusActuatorControl
             master.WriteSingleRegister(slaveId, 109, (ushort)((EsdDelay << 8) | (byte)LossCommFunction));
             master.WriteSingleRegister(slaveId, 110, (ushort)((LossCommDelay << 8) | (byte)NetworkBaudRate));
             master.WriteSingleRegister(slaveId, 111, (ushort)((NetworkResponseDelay << 8) | (byte)NetworkCommParity));
+
+            // Write Registers 113-115 (LSA/LSB and Speed Control) with validation
+            byte validatedLSA = ValidateLSA(LSA);
+            byte validatedLSB = ValidateLSB(LSB);
+            byte validatedOpenStart = ValidateSpeedControl(OpenSpeedControlStart);
+            byte validatedOpenRatio = ValidateSpeedControl(OpenSpeedControlRatio);
+            byte validatedCloseStart = ValidateSpeedControl(CloseSpeedControlStart);
+            byte validatedCloseRatio = ValidateSpeedControl(CloseSpeedControlRatio);
+
+            master.WriteSingleRegister(slaveId, 113, (ushort)((validatedLSA << 8) | validatedLSB));
+            master.WriteSingleRegister(slaveId, 114, (ushort)((validatedOpenStart << 8) | validatedOpenRatio));
+            master.WriteSingleRegister(slaveId, 115, (ushort)((validatedCloseStart << 8) | validatedCloseRatio));
+        }
+
+        // Validation methods
+        private byte ValidateLSA(byte value)
+        {
+            // Range 1-99
+            if (value < 1) return 1;
+            if (value > 99) return 99;
+            return value;
+        }
+
+        private byte ValidateLSB(byte value)
+        {
+            // Range 1-99
+            if (value < 1) return 1;
+            if (value > 99) return 99;
+            return value;
+        }
+
+        private byte ValidateSpeedControl(byte value)
+        {
+            // Range 5-95, must be multiple of 5
+            if (value < 5) return 5;
+            if (value > 95) return 95;
+
+            // Round to nearest multiple of 5
+            int remainder = value % 5;
+            if (remainder != 0)
+            {
+                if (remainder < 3)
+                    value = (byte)(value - remainder);
+                else
+                    value = (byte)(value + (5 - remainder));
+            }
+
+            return value;
+        }
+
+        // Write calibration registers to device (500-507)
+        public void WriteCalibrationToDevice(IActuatorMaster master, byte slaveId)
+        {
+            // Validate calibration values (0-4095)
+            ushort validatedAI1Zero = ValidateCalibration(AnalogInput1ZeroCalibration);
+            ushort validatedAI1Span = ValidateCalibration(AnalogInput1SpanCalibration);
+            ushort validatedAI2Zero = ValidateCalibration(AnalogInput2ZeroCalibration);
+            ushort validatedAI2Span = ValidateCalibration(AnalogInput2SpanCalibration);
+            ushort validatedAO1Zero = ValidateCalibration(AnalogOutput1ZeroCalibration);
+            ushort validatedAO1Span = ValidateCalibration(AnalogOutput1SpanCalibration);
+            ushort validatedAO2Zero = ValidateCalibration(AnalogOutput2ZeroCalibration);
+            ushort validatedAO2Span = ValidateCalibration(AnalogOutput2SpanCalibration);
+
+            // Write calibration registers 500-507
+            master.WriteSingleRegister(slaveId, 500, validatedAI1Zero);
+            master.WriteSingleRegister(slaveId, 501, validatedAI1Span);
+            master.WriteSingleRegister(slaveId, 502, validatedAI2Zero);
+            master.WriteSingleRegister(slaveId, 503, validatedAI2Span);
+            master.WriteSingleRegister(slaveId, 504, validatedAO1Zero);
+            master.WriteSingleRegister(slaveId, 505, validatedAO1Span);
+            master.WriteSingleRegister(slaveId, 506, validatedAO2Zero);
+            master.WriteSingleRegister(slaveId, 507, validatedAO2Span);
+        }
+
+        private ushort ValidateCalibration(ushort value)
+        {
+            // Range 0-4095
+            if (value > 4095) return 4095;
+            return value;
         }
 
         private (RelayTrigger, RelayMode, RelayContactType) ParseRelay(byte value)
@@ -365,8 +486,7 @@ namespace ModbusActuatorControl
         public string DeviceName { get; set; } = "";
         public ushort CloseTorque { get; set; } = 50;
         public ushort OpenTorque { get; set; } = 50;
-        public ushort MinPosition { get; set; } = 0;
-        public ushort MaxPosition { get; set; } = 4095;
+        public byte PstResult { get; set; } = 0; // 0=Never Run, 1=In Progress, 2=Passed, 3=Failed
         public DeviceConfig Config { get; set; } = new DeviceConfig();
     }
 }
