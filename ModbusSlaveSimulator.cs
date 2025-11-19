@@ -8,7 +8,7 @@ namespace ModbusActuatorControl
     public class ModbusSlaveSimulator
     {
         private readonly byte _slaveId;
-        private readonly ushort[] _holdingRegisters = new ushort[256];
+        private readonly ushort[] _holdingRegisters = new ushort[508];
         private readonly bool[] _coils = new bool[16];
         private readonly Random _random = new Random();
 
@@ -75,6 +75,38 @@ namespace ModbusActuatorControl
             // Initialize Network Info Registers 111
             // Register 111: UH = Network Response Delay (8), LH = Network Comm Parity (0 = None)
             _holdingRegisters[111] = (ushort)((8 << 8) | 0);
+
+            // Initialize Register 113: UH = LSA (25%), LH = LSB (75%)
+            _holdingRegisters[113] = (ushort)((25 << 8) | 75);
+
+            // Initialize Register 114: UH = Open Speed Control Start (70%), LH = Open Speed Control Ratio (50%)
+            _holdingRegisters[114] = (ushort)((70 << 8) | 50);
+
+            // Initialize Register 115: UH = Close Speed Control Start (30%), LH = Close Speed Control Ratio (50%)
+            _holdingRegisters[115] = (ushort)((30 << 8) | 50);
+
+            // Initialize Registers 25-28: Analog I/O (0-4095, all start at 0)
+            _holdingRegisters[25] = 0; // Analog Input 1
+            _holdingRegisters[26] = 0; // Analog Input 2
+            _holdingRegisters[27] = 0; // Analog Output 1
+            _holdingRegisters[28] = 0; // Analog Output 2
+
+            // Initialize Register 29: PST Result (0 = Never Run)
+            _holdingRegisters[29] = 0;
+
+            // Initialize Calibration Registers 500-507 (0.024% units, range 0-4095)
+            // Analog Input 1: Zero = 0, Span = 4095
+            _holdingRegisters[500] = 0;    // AI1 Zero Calibration
+            _holdingRegisters[501] = 4095; // AI1 Span Calibration
+            // Analog Input 2: Zero = 0, Span = 4095
+            _holdingRegisters[502] = 0;    // AI2 Zero Calibration
+            _holdingRegisters[503] = 4095; // AI2 Span Calibration
+            // Analog Output 1: Zero = 0, Span = 4095
+            _holdingRegisters[504] = 0;    // AO1 Zero Calibration
+            _holdingRegisters[505] = 4095; // AO1 Span Calibration
+            // Analog Output 2: Zero = 0, Span = 4095
+            _holdingRegisters[506] = 0;    // AO2 Zero Calibration
+            _holdingRegisters[507] = 4095; // AO2 Span Calibration
         }
 
         public void StartSimulation()
@@ -351,6 +383,23 @@ namespace ModbusActuatorControl
                     if (value == 1)
                     {
                         Console.WriteLine($"[Slave {_slaveId}] Errors reset");
+                    }
+                    break;
+
+                // Calibration registers 500-507 - validate range 0-4095
+                case 500: case 501: case 502: case 503:
+                case 504: case 505: case 506: case 507:
+                    if (value > 4095)
+                    {
+                        Console.WriteLine($"[Slave {_slaveId}] Calibration value {value} out of range [0-4095], clamping to 4095");
+                        _holdingRegisters[address] = 4095;
+                    }
+                    else
+                    {
+                        // Value is already stored, just log
+                        string[] calNames = { "AI1 Zero", "AI1 Span", "AI2 Zero", "AI2 Span",
+                                             "AO1 Zero", "AO1 Span", "AO2 Zero", "AO2 Span" };
+                        Console.WriteLine($"[Slave {_slaveId}] Calibration {calNames[address - 500]} set to {value} ({value * 0.024:F2}%)");
                     }
                     break;
             }
