@@ -62,6 +62,15 @@ namespace ModbusActuatorControl
         // Register 24 - Valve Torque (read-only, 0-4095 representing 0.024% each)
         public ushort ValveTorque { get; set; }
 
+        // Registers 25-28 - Analog I/O (read-only, 0-4095)
+        public ushort AnalogInput1 { get; set; }
+        public ushort AnalogInput2 { get; set; }
+        public ushort AnalogOutput1 { get; set; }
+        public ushort AnalogOutput2 { get; set; }
+
+        // Register 29 - PST Result (read-only, 0-3: 0=Never Run, 1=In Progress, 2=Passed, 3=Failed)
+        public byte PstResult { get; set; }
+
         // Read all status registers from device
         public void ReadFromDevice(IActuatorMaster master, byte slaveId)
         {
@@ -124,6 +133,16 @@ namespace ModbusActuatorControl
 
             // Register 24 - Valve Torque
             ValveTorque = master.ReadHoldingRegisters(slaveId, 24, 1)[0];
+
+            // Registers 25-28 - Analog I/O
+            var analogRegs = master.ReadHoldingRegisters(slaveId, 25, 4);
+            AnalogInput1 = analogRegs[0];
+            AnalogInput2 = analogRegs[1];
+            AnalogOutput1 = analogRegs[2];
+            AnalogOutput2 = analogRegs[3];
+
+            // Register 29 - PST Result
+            PstResult = (byte)master.ReadHoldingRegisters(slaveId, 29, 1)[0];
         }
 
         // Write command flags (Register 10)
