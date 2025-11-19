@@ -206,12 +206,15 @@ namespace ModbusActuatorControl
         }
 
         // Read all config registers from device
-        public void ReadFromDevice(IActuatorMaster master, byte slaveId)
+        public void ReadFromDevice(IActuatorMaster master, byte slaveId, ushort productIdentifier = 0x8000)
         {
-            // Read Register 11
-            var reg11 = master.ReadHoldingRegisters(slaveId, 11, 1)[0];
-            EhoType = (reg11 & (1 << 0)) != 0 ? EhoType.SpringReturn : EhoType.DoubleAction;
-            LocalInputFunction = (reg11 & (1 << 1)) != 0 ? InputFunction.Momentary : InputFunction.Maintained;
+            // Read Register 11 (conditionally based on product)
+            if (ProductCapabilities.IsRegisterAvailable(productIdentifier, 11))
+            {
+                var reg11 = master.ReadHoldingRegisters(slaveId, 11, 1)[0];
+                if (ProductCapabilities.IsBitAvailable(productIdentifier, 11, 0))
+                    EhoType = (reg11 & (1 << 0)) != 0 ? EhoType.SpringReturn : EhoType.DoubleAction;
+                LocalInputFunction = (reg11 & (1 << 1)) != 0 ? InputFunction.Momentary : InputFunction.Maintained;
             RemoteInputFunction = (reg11 & (1 << 2)) != 0 ? InputFunction.Momentary : InputFunction.Maintained;
             RemoteEsdEnabled = (reg11 & (1 << 3)) != 0 ? EnabledState.Enabled : EnabledState.Disabled;
             LossCommEnabled = (reg11 & (1 << 4)) != 0 ? EnabledState.Enabled : EnabledState.Disabled;
@@ -226,6 +229,7 @@ namespace ModbusActuatorControl
             Di5PstTrigger = (reg11 & (1 << 13)) != 0 ? TriggerType.NormallyClose : TriggerType.NormallyOpen;
             CloseDirection = (reg11 & (1 << 14)) != 0 ? CloseDirection.CounterClockwise : CloseDirection.Clockwise;
             Seat = (reg11 & (1 << 15)) != 0 ? SeatMode.Torque : SeatMode.Position;
+            }
 
             // Read Register 12 (bits 0-13 used, 14-15 unused)
             var reg12 = master.ReadHoldingRegisters(slaveId, 12, 1)[0];
@@ -474,8 +478,199 @@ namespace ModbusActuatorControl
 
         public void SaveToFile(string path)
         {
-            var json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
+            // Create a filtered version for serialization
+            var filteredConfig = new
+            {
+                ComPort,
+                BaudRate,
+                Parity,
+                StopBits,
+                Actuators = Actuators.Select(a => CreateFilteredActuatorConfig(a)).ToList()
+            };
+
+            var json = JsonSerializer.Serialize(filteredConfig, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(path, json);
+        }
+
+        private object CreateFilteredActuatorConfig(ActuatorConfig actuator)
+        {
+            var productId = actuator.ProductIdentifier;
+            var config = actuator.Config;
+
+            // Build a dynamic object with only available properties
+            var filteredProps = new Dictionary<string, object>
+            {
+                ["SlaveId"] = actuator.SlaveId,
+                ["DeviceName"] = actuator.DeviceName,
+                ["ProductIdentifier"] = actuator.ProductIdentifier
+            };
+
+            // Add torque if register 112 is available
+            if (ProductCapabilities.IsRegisterAvailable(productId, 112))
+            {
+                filteredProps["CloseTorque"] = actuator.CloseTorque;
+                filteredProps["OpenTorque"] = actuator.OpenTorque;
+            }
+
+            // Add PST result if register 29 is available
+            if (ProductCapabilities.IsRegisterAvailable(productId, 29))
+            {
+                filteredProps["PstResult"] = actuator.PstResult;
+            }
+
+            // Create nested Config object
+            var configProps = new Dictionary<string, object>();
+
+            // Register 11 bits - add only if available
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 0))
+                configProps[nameof(config.EhoType)] = config.EhoType.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 1))
+                configProps[nameof(config.LocalInputFunction)] = config.LocalInputFunction.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 2))
+                configProps[nameof(config.RemoteInputFunction)] = config.RemoteInputFunction.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 3))
+                configProps[nameof(config.RemoteEsdEnabled)] = config.RemoteEsdEnabled.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 4))
+                configProps[nameof(config.LossCommEnabled)] = config.LossCommEnabled.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 5))
+                configProps[nameof(config.Ai1Polarity)] = config.Ai1Polarity.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 6))
+                configProps[nameof(config.Ai2Polarity)] = config.Ai2Polarity.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 7))
+                configProps[nameof(config.Ao1Polarity)] = config.Ao1Polarity.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 8))
+                configProps[nameof(config.Ao2Polarity)] = config.Ao2Polarity.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 9))
+                configProps[nameof(config.Di1OpenTrigger)] = config.Di1OpenTrigger.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 10))
+                configProps[nameof(config.Di2CloseTrigger)] = config.Di2CloseTrigger.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 11))
+                configProps[nameof(config.Di3StopTrigger)] = config.Di3StopTrigger.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 12))
+                configProps[nameof(config.Di4EsdTrigger)] = config.Di4EsdTrigger.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 13))
+                configProps[nameof(config.Di5PstTrigger)] = config.Di5PstTrigger.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 14))
+                configProps[nameof(config.CloseDirection)] = config.CloseDirection.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 15))
+                configProps[nameof(config.Seat)] = config.Seat.ToString();
+
+            // Register 12 bits
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 0))
+                configProps[nameof(config.TorqueBackseat)] = config.TorqueBackseat.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 1))
+                configProps[nameof(config.TorqueRetry)] = config.TorqueRetry.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 2))
+                configProps[nameof(config.RemoteDisplay)] = config.RemoteDisplay.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 3))
+                configProps[nameof(config.Leds)] = config.Leds.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 4))
+                configProps[nameof(config.OpenInhibit)] = config.OpenInhibit.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 5))
+                configProps[nameof(config.CloseInhibit)] = config.CloseInhibit.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 6))
+                configProps[nameof(config.LocalEsd)] = config.LocalEsd.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 7))
+                configProps[nameof(config.EsdOrThermal)] = config.EsdOrThermal.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 8))
+                configProps[nameof(config.EsdOrLocal)] = config.EsdOrLocal.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 9))
+                configProps[nameof(config.EsdOrStop)] = config.EsdOrStop.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 10))
+                configProps[nameof(config.EsdOrInhibit)] = config.EsdOrInhibit.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 11))
+                configProps[nameof(config.EsdOrTorque)] = config.EsdOrTorque.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 12))
+                configProps[nameof(config.CloseSpeedControl)] = config.CloseSpeedControl.ToString();
+            if (ProductCapabilities.IsBitAvailable(productId, 12, 13))
+                configProps[nameof(config.OpenSpeedControl)] = config.OpenSpeedControl.ToString();
+
+            // Control Configuration (Registers 101-102)
+            if (ProductCapabilities.IsRegisterAvailable(productId, 101) || ProductCapabilities.IsRegisterAvailable(productId, 102))
+            {
+                configProps[nameof(config.ControlMode)] = config.ControlMode.ToString();
+                configProps[nameof(config.ModulationDelay)] = config.ModulationDelay;
+                configProps[nameof(config.Deadband)] = config.Deadband;
+                configProps[nameof(config.NetworkAdapter)] = config.NetworkAdapter.ToString();
+            }
+
+            // Relays (Registers 103-106)
+            if (ProductCapabilities.IsRegisterAvailable(productId, 103))
+            {
+                // Convert relay tuples to serializable objects
+                var relayObjects = config.Relays.Select((relay, index) => new
+                {
+                    Index = index,
+                    Trigger = relay.Item1.ToString(),
+                    Mode = relay.Item2.ToString(),
+                    ContactType = relay.Item3.ToString()
+                }).ToList();
+                configProps["Relays"] = relayObjects;
+            }
+
+            // Additional Functions (Registers 107-110)
+            if (ProductCapabilities.IsRegisterAvailable(productId, 107))
+            {
+                configProps[nameof(config.FailsafeFunction)] = config.FailsafeFunction.ToString();
+                configProps[nameof(config.FailsafeGoToPosition)] = config.FailsafeGoToPosition;
+            }
+            if (ProductCapabilities.IsRegisterAvailable(productId, 108))
+            {
+                configProps[nameof(config.EsdFunction)] = config.EsdFunction.ToString();
+            }
+            if (ProductCapabilities.IsRegisterAvailable(productId, 109))
+            {
+                configProps[nameof(config.EsdDelay)] = config.EsdDelay;
+                configProps[nameof(config.LossCommFunction)] = config.LossCommFunction.ToString();
+            }
+            if (ProductCapabilities.IsRegisterAvailable(productId, 110))
+            {
+                configProps[nameof(config.LossCommDelay)] = config.LossCommDelay;
+                configProps[nameof(config.NetworkBaudRate)] = config.NetworkBaudRate.ToString();
+            }
+
+            // Network settings (Register 111)
+            configProps[nameof(config.NetworkResponseDelay)] = config.NetworkResponseDelay;
+            configProps[nameof(config.NetworkCommParity)] = config.NetworkCommParity.ToString();
+
+            // LSA/LSB and Speed Control (Registers 113-115)
+            if (ProductCapabilities.IsRegisterAvailable(productId, 113))
+            {
+                configProps[nameof(config.LSA)] = config.LSA;
+                configProps[nameof(config.LSB)] = config.LSB;
+            }
+            if (ProductCapabilities.IsRegisterAvailable(productId, 114))
+            {
+                configProps[nameof(config.OpenSpeedControlStart)] = config.OpenSpeedControlStart;
+                configProps[nameof(config.OpenSpeedControlRatio)] = config.OpenSpeedControlRatio;
+            }
+            if (ProductCapabilities.IsRegisterAvailable(productId, 115))
+            {
+                configProps[nameof(config.CloseSpeedControlStart)] = config.CloseSpeedControlStart;
+                configProps[nameof(config.CloseSpeedControlRatio)] = config.CloseSpeedControlRatio;
+            }
+
+            // Calibration values (Registers 500-507)
+            if (ProductCapabilities.IsRegisterAvailable(productId, 500))
+                configProps[nameof(config.AnalogInput1ZeroCalibration)] = config.AnalogInput1ZeroCalibration;
+            if (ProductCapabilities.IsRegisterAvailable(productId, 501))
+                configProps[nameof(config.AnalogInput1SpanCalibration)] = config.AnalogInput1SpanCalibration;
+            if (ProductCapabilities.IsRegisterAvailable(productId, 502))
+                configProps[nameof(config.AnalogInput2ZeroCalibration)] = config.AnalogInput2ZeroCalibration;
+            if (ProductCapabilities.IsRegisterAvailable(productId, 503))
+                configProps[nameof(config.AnalogInput2SpanCalibration)] = config.AnalogInput2SpanCalibration;
+            if (ProductCapabilities.IsRegisterAvailable(productId, 504))
+                configProps[nameof(config.AnalogOutput1ZeroCalibration)] = config.AnalogOutput1ZeroCalibration;
+            if (ProductCapabilities.IsRegisterAvailable(productId, 505))
+                configProps[nameof(config.AnalogOutput1SpanCalibration)] = config.AnalogOutput1SpanCalibration;
+            if (ProductCapabilities.IsRegisterAvailable(productId, 506))
+                configProps[nameof(config.AnalogOutput2ZeroCalibration)] = config.AnalogOutput2ZeroCalibration;
+            if (ProductCapabilities.IsRegisterAvailable(productId, 507))
+                configProps[nameof(config.AnalogOutput2SpanCalibration)] = config.AnalogOutput2SpanCalibration;
+
+            filteredProps["Config"] = configProps;
+
+            return filteredProps;
         }
     }
 
@@ -484,6 +679,7 @@ namespace ModbusActuatorControl
     {
         public byte SlaveId { get; set; }
         public string DeviceName { get; set; } = "";
+        public ushort ProductIdentifier { get; set; } = 0x8000; // 0x8000=S7X, 0x8001=EHO, 0x8002=Nova
         public ushort CloseTorque { get; set; } = 50;
         public ushort OpenTorque { get; set; } = 50;
         public byte PstResult { get; set; } = 0; // 0=Never Run, 1=In Progress, 2=Passed, 3=Failed
