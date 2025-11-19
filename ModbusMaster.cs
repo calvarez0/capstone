@@ -124,7 +124,7 @@ namespace ModbusActuatorControl
         }
 
         // Simulation mode: Add a simulated slave device
-        public void AddSlave(byte slaveId, ushort initialPosition = 0)
+        public void AddSlave(byte slaveId, ushort initialPosition = 0, ushort productIdentifier = 0x8000)
         {
             if (!_isSimulation)
                 throw new InvalidOperationException("AddSlave is only available in simulation mode");
@@ -135,7 +135,7 @@ namespace ModbusActuatorControl
                 return;
             }
 
-            var slave = new ModbusSlaveSimulator(slaveId, initialPosition);
+            var slave = new ModbusSlaveSimulator(slaveId, initialPosition, productIdentifier);
             slave.StartSimulation();
             _slaves[slaveId] = slave;
             Console.WriteLine($"[Simulator] Added slave device {slaveId}");
