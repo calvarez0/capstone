@@ -25,18 +25,21 @@ namespace ModbusActuatorControl
 
         public byte SlaveId => _slaveId;
 
-        public ModbusSlaveSimulator(byte slaveId, ushort initialPosition = 0)
+        public ModbusSlaveSimulator(byte slaveId, ushort initialPosition = 0, ushort productIdentifier = 0x8000)
         {
             _slaveId = slaveId;
             _currentPosition = initialPosition;
             _targetPosition = initialPosition;
-            InitializeRegisters();
+            InitializeRegisters(productIdentifier);
         }
 
-        private void InitializeRegisters()
+        private void InitializeRegisters(ushort productIdentifier = 0x8000)
         {
             // Initialize status registers
             UpdateStatusRegisters();
+
+            // Initialize Register 100 (Product Identifier)
+            _holdingRegisters[100] = productIdentifier;
 
             // Initialize control register defaults
             _holdingRegisters[112] = (ushort)((_closeTorque << 8) | _openTorque);
@@ -310,6 +313,27 @@ namespace ModbusActuatorControl
             // Handle control registers
             switch (address)
             {
+                case 100: // Register 100 - Product Identifier
+                    // Only allow specific values: 0x8000 (S7X), 0x8001 (EHO), 0x8002 (Nova)
+                    if (value == 0x8000 || value == 0x8001 || value == 0x8002)
+                    {
+                        string productName = value switch
+                        {
+                            0x8000 => "S7X",
+                            0x8001 => "EHO",
+                            0x8002 => "Nova",
+                            _ => "Unknown"
+                        };
+                        Console.WriteLine($"[Slave {_slaveId}] Product Identifier set to {productName} (0x{value:X4})");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[Slave {_slaveId}] Invalid Product Identifier 0x{value:X4}. Must be 0x8000 (S7X), 0x8001 (EHO), or 0x8002 (Nova)");
+                        // Reject the write by not updating the register
+                        return;
+                    }
+                    break;
+
                 case 10: // Register 10 - Command flags
                     // Check the stop command bit
                     bool stopCmd = (value & (1 << 2)) != 0;
