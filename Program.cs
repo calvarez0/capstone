@@ -133,7 +133,7 @@ namespace ModbusActuatorControl
         {
             if (_master != null && _master.IsConnected)
             {
-                Console.WriteLine("Simulated devices already created. Clear them first.");
+                Console.WriteLine("\nError: Simulated devices already created. Clear them first.");
                 return;
             }
 
@@ -157,6 +157,29 @@ namespace ModbusActuatorControl
             var countInput = Console.ReadLine();
             int count = string.IsNullOrWhiteSpace(countInput) ? 1 : int.Parse(countInput);
 
+            Console.WriteLine("\n--- Product Type ---");
+            Console.WriteLine("1. S7X (0x8000)");
+            Console.WriteLine("2. EHO (0x8001)");
+            Console.WriteLine("3. Nova (0x8002)");
+            Console.Write("\nSelect product type (default 1): ");
+            var productInput = Console.ReadLine();
+            int productChoice = string.IsNullOrWhiteSpace(productInput) ? 1 : int.Parse(productInput);
+
+            ushort productIdentifier = productChoice switch
+            {
+                2 => 0x8001, // EHO
+                3 => 0x8002, // Nova
+                _ => 0x8000  // S7X (default)
+            };
+
+            string productName = productIdentifier switch
+            {
+                0x8000 => "S7X",
+                0x8001 => "EHO",
+                0x8002 => "Nova",
+                _ => "Unknown"
+            };
+
             // Create simulator master and connect
             _master = new ModbusMaster("SIM", baudRate, parity, stopBits, isSimulation: true);
             _master.Connect();
@@ -165,7 +188,7 @@ namespace ModbusActuatorControl
             for (byte i = 0; i < count; i++)
             {
                 byte slaveId = (byte)(startId + i);
-                _master.AddSlave(slaveId, (ushort)(i * 100));
+                _master.AddSlave(slaveId, (ushort)(i * 100), productIdentifier);
             }
 
             // Create ActuatorDevice instances for each slave
@@ -185,9 +208,10 @@ namespace ModbusActuatorControl
             _currentConfig.Parity = parity;
             _currentConfig.StopBits = stopBits;
 
-            Console.WriteLine($"\nCreated {count} simulated device(s)");
-            Console.WriteLine($"Connection settings: {baudRate} baud, Parity={parity}, StopBits={stopBits}");
-            Console.WriteLine($"Found {_devices.Count} device(s)");
+            Console.WriteLine($"\nCreated {count} simulated device(s).");
+            Console.WriteLine($"Product Type: {productName} (0x{productIdentifier:X4})");
+            Console.WriteLine($"Connection Settings: {baudRate} baud, Parity={parity}, StopBits={stopBits}");
+            Console.WriteLine($"Found {_devices.Count} device(s).");
 
             // Automatically read configuration from the simulated devices
             Console.WriteLine("\nReading configuration from simulated devices...");
@@ -198,25 +222,25 @@ namespace ModbusActuatorControl
                 {
                     var config = device.ReadConfiguration();
                     _currentConfig.Actuators.Add(config);
-                    Console.WriteLine($"Read configuration from device {device.SlaveId}");
+                    Console.WriteLine($"  Read configuration from device {device.SlaveId}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to read configuration from device {device.SlaveId}: {ex.Message}");
+                    Console.WriteLine($"  Error: Failed to read from device {device.SlaveId}: {ex.Message}");
                 }
             }
-            Console.WriteLine($"Configuration loaded from {_currentConfig.Actuators.Count} device(s)");
+            Console.WriteLine($"Configuration loaded from {_currentConfig.Actuators.Count} device(s).");
         }
 
         static void ListSimulatedDevices()
         {
             if (_devices.Count == 0)
             {
-                Console.WriteLine("\nNo simulated devices. Create some first.");
+                Console.WriteLine("\nError: No simulated devices found. Create some first.");
                 return;
             }
 
-            Console.WriteLine("\nSimulated Devices:");
+            Console.WriteLine("\n--- Simulated Devices ---");
             foreach (var device in _devices)
             {
                 device.UpdateStatus();
@@ -238,12 +262,12 @@ namespace ModbusActuatorControl
                 _master = null;
             }
 
-            Console.WriteLine("All simulated devices cleared");
+            Console.WriteLine("\nAll simulated devices cleared.");
         }
 
         static void SwitchMode()
         {
-            Console.WriteLine("\nSwitching mode will clear all current devices.");
+            Console.WriteLine("\nWarning: Switching mode will clear all current devices.");
             Console.Write("Continue? (y/n): ");
             if (Console.ReadLine()?.ToLower() == "y")
             {
@@ -257,7 +281,7 @@ namespace ModbusActuatorControl
                 }
 
                 _isSimulationMode = !_isSimulationMode;
-                Console.WriteLine($"\nSwitched to {(_isSimulationMode ? "SIMULATION" : "HARDWARE")} MODE");
+                Console.WriteLine($"Switched to {(_isSimulationMode ? "SIMULATION" : "HARDWARE")} MODE.");
             }
         }
 
@@ -265,11 +289,11 @@ namespace ModbusActuatorControl
         {
             if (_master != null && _master.IsConnected)
             {
-                Console.WriteLine("Already connected. Disconnect first.");
+                Console.WriteLine("\nError: Already connected. Disconnect first.");
                 return;
             }
 
-            Console.WriteLine("\nAvailable COM ports:");
+            Console.WriteLine("\n--- Available COM Ports ---");
             var ports = SerialPort.GetPortNames();
             foreach (var port in ports)
             {
@@ -302,12 +326,12 @@ namespace ModbusActuatorControl
             {
                 _master = new ModbusMaster(portName, baudRate, 8, parity, stopBits);
                 _master.Connect();
-                Console.WriteLine($"Connected successfully!");
+                Console.WriteLine($"\nConnected successfully.");
                 Console.WriteLine($"Settings: {baudRate} baud, Parity={parity}, StopBits={stopBits}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Connection failed: {ex.Message}");
+                Console.WriteLine($"\nError: Connection failed - {ex.Message}");
             }
         }
 
@@ -340,7 +364,7 @@ namespace ModbusActuatorControl
                 }
             }
 
-            Console.WriteLine($"\nFound {_devices.Count} device(s)");
+            Console.WriteLine($"Found {_devices.Count} device(s).");
         }
 
         static void MonitorDevices()
@@ -349,7 +373,7 @@ namespace ModbusActuatorControl
 
             if (_devices.Count == 0)
             {
-                Console.WriteLine($"\nNo devices found. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
+                Console.WriteLine($"\nError: No devices found. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
                 return;
             }
 
@@ -385,7 +409,7 @@ namespace ModbusActuatorControl
 
             if (_devices.Count == 0)
             {
-                Console.WriteLine($"\nNo devices available. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
+                Console.WriteLine($"\nError: No devices available. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
                 return;
             }
 
@@ -396,7 +420,7 @@ namespace ModbusActuatorControl
             var device = _devices.FirstOrDefault(d => d.SlaveId == slaveId);
             if (device == null)
             {
-                Console.WriteLine($"Device {slaveId} not found.");
+                Console.WriteLine($"\nError: Device {slaveId} not found.");
                 return;
             }
 
@@ -420,7 +444,7 @@ namespace ModbusActuatorControl
                         ViewDetailedStatus(device);
                         break;
                     case "2":
-                        Console.Write("Enter target position (0-4095): ");
+                        Console.Write("\nEnter target position (0-4095): ");
                         ushort position = ushort.Parse(Console.ReadLine());
                         device.MoveToPosition(position);
                         break;
@@ -440,13 +464,13 @@ namespace ModbusActuatorControl
                         ToggleSetupMode(device);
                         break;
                     default:
-                        Console.WriteLine("Invalid command");
+                        Console.WriteLine("\nError: Invalid command.");
                         break;
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Command failed: {ex.Message}");
+                Console.WriteLine($"\nError: Command failed - {ex.Message}");
             }
         }
 
@@ -455,11 +479,11 @@ namespace ModbusActuatorControl
             try
             {
                 device.MoveToPosition(4095); // Move to maximum position
-                Console.WriteLine("Opening device to maximum position...");
+                Console.WriteLine("\nOpening device to maximum position...");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"\nError: {ex.Message}");
             }
         }
 
@@ -468,11 +492,11 @@ namespace ModbusActuatorControl
             try
             {
                 device.MoveToPosition(0); // Move to minimum position
-                Console.WriteLine("Closing device to minimum position...");
+                Console.WriteLine("\nClosing device to minimum position...");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"\nError: {ex.Message}");
             }
         }
 
@@ -480,7 +504,7 @@ namespace ModbusActuatorControl
         {
             try
             {
-                Console.Write("Enable stop mode? (y/n): ");
+                Console.Write("\nEnable stop mode? (y/n): ");
                 bool enableStop = Console.ReadLine().ToLower() == "y";
 
                 // Check if we're trying to disable stop mode while setup mode is on
@@ -489,17 +513,17 @@ namespace ModbusActuatorControl
                     device.UpdateStatus();
                     if (device.CurrentStatus.Status.SetupMode)
                     {
-                        Console.WriteLine("Error: Cannot disable stop mode while setup mode is active. Exit setup mode first.");
+                        Console.WriteLine("\nError: Cannot disable stop mode while setup mode is active. Exit setup mode first.");
                         return;
                     }
                 }
 
                 device.Stop(enableStop);
-                Console.WriteLine(enableStop ? "Stop mode enabled." : "Stop mode disabled.");
+                Console.WriteLine(enableStop ? "\nStop mode enabled." : "\nStop mode disabled.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"\nError: {ex.Message}");
             }
         }
 
@@ -510,11 +534,11 @@ namespace ModbusActuatorControl
                 var status = new DeviceStatus();
                 status.HostEsdCmd = true;
                 status.WriteCommandsToDevice(_master, device.SlaveId);
-                Console.WriteLine("ESD command sent.");
+                Console.WriteLine("\nESD command sent.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"\nError: {ex.Message}");
             }
         }
 
@@ -522,7 +546,7 @@ namespace ModbusActuatorControl
         {
             try
             {
-                Console.Write("Enter setup mode? (y/n): ");
+                Console.Write("\nEnter setup mode? (y/n): ");
                 bool enterSetup = Console.ReadLine().ToLower() == "y";
 
                 // Update status to get current state
@@ -533,7 +557,7 @@ namespace ModbusActuatorControl
                 {
                     if (!device.CurrentStatus.Status.StopMode)
                     {
-                        Console.WriteLine("Error: Cannot enter setup mode. Device must be in stop mode first (send stop command).");
+                        Console.WriteLine("\nError: Cannot enter setup mode. Device must be in stop mode first (send stop command).");
                         return;
                     }
                 }
@@ -541,11 +565,11 @@ namespace ModbusActuatorControl
                 // Read current command state and only modify soft setup bit
                 device.CurrentStatus.Status.SoftSetupCmd = enterSetup;
                 device.CurrentStatus.Status.WriteCommandsToDevice(_master, device.SlaveId);
-                Console.WriteLine(enterSetup ? "Entering setup mode..." : "Exiting setup mode...");
+                Console.WriteLine(enterSetup ? "\nEntering setup mode..." : "\nExiting setup mode...");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"\nError: {ex.Message}");
             }
         }
 
@@ -554,11 +578,11 @@ namespace ModbusActuatorControl
             try
             {
                 device.UpdateStatus();
-                Console.WriteLine(device.CurrentStatus.ToDetailedString());
+                Console.WriteLine("\n" + device.CurrentStatus.ToDetailedString());
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.WriteLine($"\nError: {ex.Message}");
             }
         }
 
@@ -566,7 +590,7 @@ namespace ModbusActuatorControl
         {
             if (_master == null || !_master.IsConnected)
             {
-                Console.WriteLine("Not connected. Connect first.");
+                Console.WriteLine("\nError: Not connected. Connect first.");
                 return false;
             }
             return true;
@@ -586,7 +610,7 @@ namespace ModbusActuatorControl
                 _master = null;
             }
 
-            Console.WriteLine("Disconnected");
+            Console.WriteLine("\nDisconnected.");
         }
 
         static void Cleanup()
@@ -634,17 +658,53 @@ namespace ModbusActuatorControl
 
         static void LoadConfiguration()
         {
-            Console.Write("Enter configuration file path: ");
+            Console.Write("\nEnter configuration file path: ");
             var filePath = Console.ReadLine();
 
             try
             {
                 _currentConfig = SystemConfig.LoadFromFile(filePath);
-                Console.WriteLine($"Loaded configuration with {_currentConfig.Actuators.Count} actuator(s)");
+                Console.WriteLine($"\nLoaded configuration with {_currentConfig.Actuators.Count} actuator(s).");
+
+                // Validate product identifiers match connected devices
+                if (_devices.Count > 0)
+                {
+                    Console.WriteLine("\nValidating product identifiers against connected devices...");
+                    bool allValid = true;
+                    foreach (var configActuator in _currentConfig.Actuators)
+                    {
+                        var device = _devices.FirstOrDefault(d => d.SlaveId == configActuator.SlaveId);
+                        if (device != null && device.CurrentStatus != null)
+                        {
+                            ushort deviceProductId = device.CurrentStatus.ProductIdentifier;
+                            if (deviceProductId != configActuator.ProductIdentifier)
+                            {
+                                string configProduct = ProductCapabilities.GetProductName(configActuator.ProductIdentifier);
+                                string deviceProduct = ProductCapabilities.GetProductName(deviceProductId);
+                                Console.WriteLine($"  Error: Device {configActuator.SlaveId} product mismatch!");
+                                Console.WriteLine($"    Config expects: {configProduct} (0x{configActuator.ProductIdentifier:X4})");
+                                Console.WriteLine($"    Device is: {deviceProduct} (0x{deviceProductId:X4})");
+                                allValid = false;
+                            }
+                        }
+                    }
+
+                    if (!allValid)
+                    {
+                        Console.WriteLine("\nError: Configuration not loaded due to product identifier mismatch.");
+                        Console.WriteLine("The config file is for different product types than the connected devices.");
+                        _currentConfig = null;
+                        return;
+                    }
+                    else
+                    {
+                        Console.WriteLine("  All product identifiers validated successfully.");
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to load configuration: {ex.Message}");
+                Console.WriteLine($"\nError: Failed to load configuration - {ex.Message}");
             }
         }
 
@@ -652,21 +712,21 @@ namespace ModbusActuatorControl
         {
             if (_currentConfig == null)
             {
-                Console.WriteLine("No configuration to save. Read from devices first.");
+                Console.WriteLine("\nError: No configuration to save. Read from devices first.");
                 return;
             }
 
-            Console.Write("Enter configuration file path: ");
+            Console.Write("\nEnter configuration file path: ");
             var filePath = Console.ReadLine();
 
             try
             {
                 _currentConfig.SaveToFile(filePath);
-                Console.WriteLine("Configuration saved successfully");
+                Console.WriteLine("\nConfiguration saved successfully.");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Failed to save configuration: {ex.Message}");
+                Console.WriteLine($"\nError: Failed to save configuration - {ex.Message}");
             }
         }
 
@@ -676,10 +736,11 @@ namespace ModbusActuatorControl
 
             if (_currentConfig == null)
             {
-                Console.WriteLine("No configuration loaded. Load from file first.");
+                Console.WriteLine("\nError: No configuration loaded. Load from file first.");
                 return;
             }
 
+            Console.WriteLine("\nApplying configuration to devices...");
             foreach (var actuatorConfig in _currentConfig.Actuators)
             {
                 var device = _devices.FirstOrDefault(d => d.SlaveId == actuatorConfig.SlaveId);
@@ -688,13 +749,15 @@ namespace ModbusActuatorControl
                     try
                     {
                         device.ApplyConfiguration(actuatorConfig);
+                        Console.WriteLine($"  Applied configuration to device {actuatorConfig.SlaveId}");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Failed to apply configuration to device {actuatorConfig.SlaveId}: {ex.Message}");
+                        Console.WriteLine($"  Error: Failed to apply configuration to device {actuatorConfig.SlaveId} - {ex.Message}");
                     }
                 }
             }
+            Console.WriteLine("Configuration apply complete.");
         }
 
         static void ReadConfiguration()
@@ -703,7 +766,7 @@ namespace ModbusActuatorControl
 
             if (_devices.Count == 0)
             {
-                Console.WriteLine($"No devices found. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
+                Console.WriteLine($"\nError: No devices found. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
                 return;
             }
 
@@ -716,21 +779,22 @@ namespace ModbusActuatorControl
                 Actuators = new List<ActuatorConfig>()
             };
 
+            Console.WriteLine("\nReading configuration from devices...");
             foreach (var device in _devices)
             {
                 try
                 {
                     var config = device.ReadConfiguration();
                     _currentConfig.Actuators.Add(config);
-                    Console.WriteLine($"Read configuration from device {device.SlaveId}");
+                    Console.WriteLine($"  Read configuration from device {device.SlaveId}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to read configuration from device {device.SlaveId}: {ex.Message}");
+                    Console.WriteLine($"  Error: Failed to read from device {device.SlaveId} - {ex.Message}");
                 }
             }
 
-            Console.WriteLine($"\nRead configuration from {_currentConfig.Actuators.Count} device(s)");
+            Console.WriteLine($"Configuration read from {_currentConfig.Actuators.Count} device(s).");
         }
 
         static void CalibrationMenu()
@@ -739,7 +803,7 @@ namespace ModbusActuatorControl
 
             if (_devices.Count == 0)
             {
-                Console.WriteLine($"No devices available. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
+                Console.WriteLine($"\nError: No devices available. {(_isSimulationMode ? "Create simulated devices" : "Run 'Scan for Devices'")} first.");
                 return;
             }
 
@@ -750,14 +814,25 @@ namespace ModbusActuatorControl
             var device = _devices.FirstOrDefault(d => d.SlaveId == slaveId);
             if (device == null)
             {
-                Console.WriteLine($"Device {slaveId} not found.");
+                Console.WriteLine($"\nError: Device {slaveId} not found.");
                 return;
             }
 
             try
             {
-                // Check if soft setup mode is on (reg 3 bit 9)
+                // Update status to get current product identifier
                 device.UpdateStatus();
+
+                // Check if calibration registers (500-507) are available for this product
+                if (!ProductCapabilities.IsRegisterAvailable(device.CurrentStatus.ProductIdentifier, 500))
+                {
+                    string productName = ProductCapabilities.GetProductName(device.CurrentStatus.ProductIdentifier);
+                    Console.WriteLine($"\nError: Calibration is not available for {productName} devices.");
+                    Console.WriteLine($"Product {productName} does not support calibration registers 500-507.");
+                    return;
+                }
+
+                // Check if soft setup mode is on (reg 3 bit 9)
                 if (!device.CurrentStatus.Status.SetupMode)
                 {
                     Console.WriteLine("\nError: Cannot proceed with calibration. Device must be in setup mode first.");
@@ -836,7 +911,7 @@ namespace ModbusActuatorControl
                 {
                     // Write calibration values to device
                     config.Config.WriteCalibrationToDevice(_master, slaveId);
-                    Console.WriteLine("Calibration values written to device.");
+                    Console.WriteLine("\nCalibration values written to device.");
 
                     // Turn off soft setup mode
                     device.UpdateStatus();
@@ -855,16 +930,16 @@ namespace ModbusActuatorControl
                         }
                     }
 
-                    Console.WriteLine("Calibration complete!");
+                    Console.WriteLine("\nCalibration complete.");
                 }
                 else
                 {
-                    Console.WriteLine("Calibration cancelled.");
+                    Console.WriteLine("\nCalibration cancelled.");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Calibration failed: {ex.Message}");
+                Console.WriteLine($"\nError: Calibration failed - {ex.Message}");
             }
         }
 
@@ -874,7 +949,7 @@ namespace ModbusActuatorControl
             {
                 if (value > 4095)
                 {
-                    Console.WriteLine($"Value {value} exceeds maximum (4095), using 4095.");
+                    Console.WriteLine($"Warning: Value {value} exceeds maximum (4095), using 4095.");
                     return 4095;
                 }
                 return value;
@@ -886,7 +961,7 @@ namespace ModbusActuatorControl
         {
             if (_currentConfig == null || _currentConfig.Actuators.Count == 0)
             {
-                Console.WriteLine("No configuration loaded. Load from file or read from devices first.");
+                Console.WriteLine("\nError: No configuration loaded. Load from file or read from devices first.");
                 return;
             }
 
@@ -904,7 +979,7 @@ namespace ModbusActuatorControl
             }
             else
             {
-                Console.WriteLine("Invalid selection");
+                Console.WriteLine("\nError: Invalid selection.");
             }
         }
 
@@ -913,46 +988,88 @@ namespace ModbusActuatorControl
             while (true)
             {
                 Console.WriteLine($"\n--- Edit Device {config.SlaveId} Configuration ---");
-                Console.WriteLine("1. Basic Settings (Torque, Position Limits)");
-                Console.WriteLine("2. Register 11 Flags (EHO, Input Functions, Polarities, Triggers)");
-                Console.WriteLine("3. Register 12 Flags (Torque, Display, Inhibits, ESD, Speed)");
-                Console.WriteLine("4. Control Configuration (Control Mode, Modulation, Deadband, LSA/LSB, Speed Control)");
-                Console.WriteLine("5. Relay Configuration (9 Relays)");
-                Console.WriteLine("6. Additional Functions (Failsafe, ESD, Loss Comm)");
-                Console.WriteLine("7. Network Settings (Baud Rate, Parity, Response Delay)");
+                string productName = ProductCapabilities.GetProductName(config.ProductIdentifier);
+                Console.WriteLine($"Product Type: {productName}\n");
+
+                // Build dynamic menu based on available registers
+                var menuOptions = new Dictionary<string, (string description, Action action)>();
+                int optionNum = 1;
+
+                // Basic Settings (Register 112) - Torque
+                if (ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 112))
+                {
+                    menuOptions[optionNum.ToString()] = ("Basic Settings (Torque)", () => EditBasicSettings(config));
+                    optionNum++;
+                }
+
+                // Register 11 Flags - check if any bits are available
+                if (ProductCapabilities.GetAvailableBits(config.ProductIdentifier, 11).Count > 0)
+                {
+                    menuOptions[optionNum.ToString()] = ("Register 11 Flags (EHO, Input Functions, Polarities, Triggers)", () => EditRegister11Flags(config.Config, config.ProductIdentifier));
+                    optionNum++;
+                }
+
+                // Register 12 Flags - check if any bits are available
+                if (ProductCapabilities.GetAvailableBits(config.ProductIdentifier, 12).Count > 0)
+                {
+                    menuOptions[optionNum.ToString()] = ("Register 12 Flags (Torque, Display, Inhibits, ESD, Speed)", () => EditRegister12Flags(config.Config, config.ProductIdentifier));
+                    optionNum++;
+                }
+
+                // Control Configuration (Registers 101-102, 113-115)
+                bool hasControlConfig = ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 101) ||
+                                       ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 102) ||
+                                       ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 113) ||
+                                       ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 114) ||
+                                       ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 115);
+                if (hasControlConfig)
+                {
+                    menuOptions[optionNum.ToString()] = ("Control Configuration (Control Mode, Modulation, Deadband, LSA/LSB, Speed Control)", () => EditControlConfiguration(config.Config, config.ProductIdentifier));
+                    optionNum++;
+                }
+
+                // Relay Configuration (Registers 103-106)
+                bool hasRelayConfig = ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 103);
+                if (hasRelayConfig)
+                {
+                    menuOptions[optionNum.ToString()] = ("Relay Configuration (9 Relays)", () => EditRelayConfiguration(config.Config));
+                    optionNum++;
+                }
+
+                // Additional Functions (Registers 107-110)
+                bool hasAdditionalFunctions = ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 107) ||
+                                             ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 108) ||
+                                             ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 109) ||
+                                             ProductCapabilities.IsRegisterAvailable(config.ProductIdentifier, 110);
+                if (hasAdditionalFunctions)
+                {
+                    menuOptions[optionNum.ToString()] = ("Additional Functions (Failsafe, ESD, Loss Comm)", () => EditAdditionalFunctions(config.Config, config.ProductIdentifier));
+                    optionNum++;
+                }
+
+                // Network Settings (Registers 110-111) - always available
+                menuOptions[optionNum.ToString()] = ("Network Settings (Baud Rate, Parity, Response Delay)", () => EditNetworkSettings(config.Config));
+
+                // Display menu
+                foreach (var option in menuOptions)
+                {
+                    Console.WriteLine($"{option.Key}. {option.Value.description}");
+                }
                 Console.WriteLine("0. Back");
                 Console.Write("\nSelect option: ");
 
                 var choice = Console.ReadLine();
 
-                switch (choice)
+                if (choice == "0")
+                    return;
+
+                if (menuOptions.ContainsKey(choice))
                 {
-                    case "1":
-                        EditBasicSettings(config);
-                        break;
-                    case "2":
-                        EditRegister11Flags(config.Config);
-                        break;
-                    case "3":
-                        EditRegister12Flags(config.Config);
-                        break;
-                    case "4":
-                        EditControlConfiguration(config.Config);
-                        break;
-                    case "5":
-                        EditRelayConfiguration(config.Config);
-                        break;
-                    case "6":
-                        EditAdditionalFunctions(config.Config);
-                        break;
-                    case "7":
-                        EditNetworkSettings(config.Config);
-                        break;
-                    case "0":
-                        return;
-                    default:
-                        Console.WriteLine("Invalid option");
-                        break;
+                    menuOptions[choice].action();
+                }
+                else
+                {
+                    Console.WriteLine("\nError: Invalid option.");
                 }
             }
         }
@@ -960,8 +1077,8 @@ namespace ModbusActuatorControl
         static void EditBasicSettings(ActuatorConfig config)
         {
             Console.WriteLine($"\n--- Basic Settings ---");
-            Console.WriteLine($"1. Close Torque: {config.CloseTorque}");
-            Console.WriteLine($"2. Open Torque: {config.OpenTorque}");
+            Console.WriteLine($"1. Close Torque: {config.CloseTorque}%");
+            Console.WriteLine($"2. Open Torque: {config.OpenTorque}%");
             Console.Write("\nEnter number to edit (0 to exit): ");
 
             if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= 2)
@@ -979,59 +1096,69 @@ namespace ModbusActuatorControl
                             config.OpenTorque = openTorque;
                         break;
                 }
-                Console.WriteLine("Updated.");
+                Console.WriteLine("\nUpdated.");
             }
         }
 
-        static void EditRegister11Flags(DeviceConfig config)
+        static void EditRegister11Flags(DeviceConfig config, ushort productId)
         {
             Console.WriteLine($"\n--- Register 11 Flags ---");
-            Console.WriteLine($"1. EHO Type: {config.EhoType}");
-            Console.WriteLine($"2. Local Input Function: {config.LocalInputFunction}");
-            Console.WriteLine($"3. Remote Input Function: {config.RemoteInputFunction}");
-            Console.WriteLine($"4. Remote ESD Enabled: {config.RemoteEsdEnabled}");
-            Console.WriteLine($"5. Loss Comm Enabled: {config.LossCommEnabled}");
-            Console.WriteLine($"6. AI1 Polarity: {config.Ai1Polarity}");
-            Console.WriteLine($"7. AI2 Polarity: {config.Ai2Polarity}");
-            Console.WriteLine($"8. AO1 Polarity: {config.Ao1Polarity}");
-            Console.WriteLine($"9. AO2 Polarity: {config.Ao2Polarity}");
-            Console.WriteLine($"10. DI1 Open Trigger: {config.Di1OpenTrigger}");
-            Console.WriteLine($"11. DI2 Close Trigger: {config.Di2CloseTrigger}");
-            Console.WriteLine($"12. DI3 Stop Trigger: {config.Di3StopTrigger}");
-            Console.WriteLine($"13. DI4 ESD Trigger: {config.Di4EsdTrigger}");
-            Console.WriteLine($"14. DI5 PST Trigger: {config.Di5PstTrigger}");
-            Console.WriteLine($"15. Close Direction: {config.CloseDirection}");
-            Console.WriteLine($"16. Seat Mode: {config.Seat}");
+
+            // Build dynamic menu based on available bits
+            var options = new List<(int num, string desc, Action toggle, int bit)>();
+            int num = 1;
+
+            // Map each option to its bit in register 11 and check if available
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 0))
+                options.Add((num++, $"EHO Type: {config.EhoType}", () => config.EhoType = config.EhoType == EhoType.DoubleAction ? EhoType.SpringReturn : EhoType.DoubleAction, 0));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 1))
+                options.Add((num++, $"Local Input Function: {config.LocalInputFunction}", () => config.LocalInputFunction = config.LocalInputFunction == InputFunction.Maintained ? InputFunction.Momentary : InputFunction.Maintained, 1));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 2))
+                options.Add((num++, $"Remote Input Function: {config.RemoteInputFunction}", () => config.RemoteInputFunction = config.RemoteInputFunction == InputFunction.Maintained ? InputFunction.Momentary : InputFunction.Maintained, 2));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 3))
+                options.Add((num++, $"Remote ESD Enabled: {config.RemoteEsdEnabled}", () => config.RemoteEsdEnabled = config.RemoteEsdEnabled == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled, 3));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 4))
+                options.Add((num++, $"Loss Comm Enabled: {config.LossCommEnabled}", () => config.LossCommEnabled = config.LossCommEnabled == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled, 4));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 5))
+                options.Add((num++, $"AI1 Polarity: {config.Ai1Polarity}", () => config.Ai1Polarity = config.Ai1Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal, 5));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 6))
+                options.Add((num++, $"AI2 Polarity: {config.Ai2Polarity}", () => config.Ai2Polarity = config.Ai2Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal, 6));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 7))
+                options.Add((num++, $"AO1 Polarity: {config.Ao1Polarity}", () => config.Ao1Polarity = config.Ao1Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal, 7));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 8))
+                options.Add((num++, $"AO2 Polarity: {config.Ao2Polarity}", () => config.Ao2Polarity = config.Ao2Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal, 8));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 9))
+                options.Add((num++, $"DI1 Open Trigger: {config.Di1OpenTrigger}", () => config.Di1OpenTrigger = config.Di1OpenTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen, 9));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 10))
+                options.Add((num++, $"DI2 Close Trigger: {config.Di2CloseTrigger}", () => config.Di2CloseTrigger = config.Di2CloseTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen, 10));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 11))
+                options.Add((num++, $"DI3 Stop Trigger: {config.Di3StopTrigger}", () => config.Di3StopTrigger = config.Di3StopTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen, 11));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 12))
+                options.Add((num++, $"DI4 ESD Trigger: {config.Di4EsdTrigger}", () => config.Di4EsdTrigger = config.Di4EsdTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen, 12));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 13))
+                options.Add((num++, $"DI5 PST Trigger: {config.Di5PstTrigger}", () => config.Di5PstTrigger = config.Di5PstTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen, 13));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 14))
+                options.Add((num++, $"Close Direction: {config.CloseDirection}", () => config.CloseDirection = config.CloseDirection == CloseDirection.Clockwise ? CloseDirection.CounterClockwise : CloseDirection.Clockwise, 14));
+            if (ProductCapabilities.IsBitAvailable(productId, 11, 15))
+                options.Add((num++, $"Seat Mode: {config.Seat}", () => config.Seat = config.Seat == SeatMode.Position ? SeatMode.Torque : SeatMode.Position, 15));
+
+            // Display options
+            foreach (var opt in options)
+            {
+                Console.WriteLine($"{opt.num}. {opt.desc}");
+            }
             Console.Write("\nEnter number to toggle (0 to exit): ");
 
-            if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= 16)
+            if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= options.Count)
             {
-                switch (choice)
-                {
-                    case 1: config.EhoType = config.EhoType == EhoType.DoubleAction ? EhoType.SpringReturn : EhoType.DoubleAction; break;
-                    case 2: config.LocalInputFunction = config.LocalInputFunction == InputFunction.Maintained ? InputFunction.Momentary : InputFunction.Maintained; break;
-                    case 3: config.RemoteInputFunction = config.RemoteInputFunction == InputFunction.Maintained ? InputFunction.Momentary : InputFunction.Maintained; break;
-                    case 4: config.RemoteEsdEnabled = config.RemoteEsdEnabled == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
-                    case 5: config.LossCommEnabled = config.LossCommEnabled == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
-                    case 6: config.Ai1Polarity = config.Ai1Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal; break;
-                    case 7: config.Ai2Polarity = config.Ai2Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal; break;
-                    case 8: config.Ao1Polarity = config.Ao1Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal; break;
-                    case 9: config.Ao2Polarity = config.Ao2Polarity == Polarity.Normal ? Polarity.Reversed : Polarity.Normal; break;
-                    case 10: config.Di1OpenTrigger = config.Di1OpenTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
-                    case 11: config.Di2CloseTrigger = config.Di2CloseTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
-                    case 12: config.Di3StopTrigger = config.Di3StopTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
-                    case 13: config.Di4EsdTrigger = config.Di4EsdTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
-                    case 14: config.Di5PstTrigger = config.Di5PstTrigger == TriggerType.NormallyOpen ? TriggerType.NormallyClose : TriggerType.NormallyOpen; break;
-                    case 15: config.CloseDirection = config.CloseDirection == CloseDirection.Clockwise ? CloseDirection.CounterClockwise : CloseDirection.Clockwise; break;
-                    case 16: config.Seat = config.Seat == SeatMode.Position ? SeatMode.Torque : SeatMode.Position; break;
-                }
-                Console.WriteLine("Updated.");
+                options[choice - 1].toggle();
+                Console.WriteLine("\nUpdated.");
             }
         }
 
-        static void EditRegister12Flags(DeviceConfig config)
+        static void EditRegister12Flags(DeviceConfig config, ushort productId)
         {
-            Console.WriteLine($"\n--- Register 12 Flags (Bits 0-13) ---");
+            Console.WriteLine($"\n--- Register 12 Flags ---");
             Console.WriteLine($"1. Torque Backseat: {config.TorqueBackseat}");
             Console.WriteLine($"2. Torque Retry: {config.TorqueRetry}");
             Console.WriteLine($"3. Remote Display: {config.RemoteDisplay}");
@@ -1067,11 +1194,11 @@ namespace ModbusActuatorControl
                     case 13: config.CloseSpeedControl = config.CloseSpeedControl == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
                     case 14: config.OpenSpeedControl = config.OpenSpeedControl == EnabledState.Disabled ? EnabledState.Enabled : EnabledState.Disabled; break;
                 }
-                Console.WriteLine("Updated.");
+                Console.WriteLine("\nUpdated.");
             }
         }
 
-        static void EditControlConfiguration(DeviceConfig config)
+        static void EditControlConfiguration(DeviceConfig config, ushort productId)
         {
             Console.WriteLine($"\n--- Control Configuration ---");
             Console.WriteLine($"1. Control Mode: {config.ControlMode}");
@@ -1177,17 +1304,17 @@ namespace ModbusActuatorControl
                         }
                         break;
                 }
-                Console.WriteLine("Updated.");
+                Console.WriteLine("\nUpdated.");
             }
         }
 
         static void EditRelayConfiguration(DeviceConfig config)
         {
-            Console.WriteLine($"\n--- Relay Configuration (9 Relays) ---");
+            Console.WriteLine($"\n--- Relay Configuration ---");
             for (int i = 0; i < config.Relays.Count; i++)
             {
                 var relay = config.Relays[i];
-                Console.WriteLine($"{i + 1}. Trigger={relay.trigger}, Mode={relay.mode}, Contact={relay.contact}");
+                Console.WriteLine($"{i + 1}. Relay {i + 1}: Trigger={relay.trigger}, Mode={relay.mode}, Contact={relay.contact}");
             }
 
             Console.Write("\nEnter relay number to edit (0 to exit): ");
@@ -1195,7 +1322,7 @@ namespace ModbusActuatorControl
             {
                 var relay = config.Relays[relayNum - 1];
 
-                Console.Write($"Enter Trigger (0-29, current={relay.trigger}): ");
+                Console.Write($"\nEnter Trigger (0-29, current={relay.trigger}): ");
                 var input = Console.ReadLine();
                 if (!string.IsNullOrWhiteSpace(input))
                     relay.trigger = (RelayTrigger)int.Parse(input);
@@ -1211,15 +1338,15 @@ namespace ModbusActuatorControl
                     relay.contact = (RelayContactType)int.Parse(input);
 
                 config.Relays[relayNum - 1] = relay;
-                Console.WriteLine("Relay updated.");
+                Console.WriteLine("\nRelay updated.");
             }
         }
 
-        static void EditAdditionalFunctions(DeviceConfig config)
+        static void EditAdditionalFunctions(DeviceConfig config, ushort productId)
         {
             Console.WriteLine($"\n--- Additional Functions ---");
             Console.WriteLine($"1. Failsafe Function: {config.FailsafeFunction}");
-            Console.WriteLine($"2. Failsafe Go To Position: {config.FailsafeGoToPosition}");
+            Console.WriteLine($"2. Failsafe Go To Position: {config.FailsafeGoToPosition}%");
             Console.WriteLine($"3. ESD Function: {config.EsdFunction}");
             Console.WriteLine($"4. ESD Delay: {config.EsdDelay}");
             Console.WriteLine($"5. Loss Comm Function: {config.LossCommFunction}");
@@ -1261,7 +1388,7 @@ namespace ModbusActuatorControl
                             config.LossCommDelay = lossCommDelay;
                         break;
                 }
-                Console.WriteLine("Updated.");
+                Console.WriteLine("\nUpdated.");
             }
         }
 
@@ -1293,7 +1420,7 @@ namespace ModbusActuatorControl
                             config.NetworkCommParity = (NetworkCommParity)parity;
                         break;
                 }
-                Console.WriteLine("Updated.");
+                Console.WriteLine("\nUpdated.");
             }
         }
 
