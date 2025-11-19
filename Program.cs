@@ -754,20 +754,132 @@ namespace ModbusActuatorControl
                 return;
             }
 
-            Console.WriteLine("\nThis will calibrate the actuator.");
-            Console.Write("Continue? (y/n): ");
-            if (Console.ReadLine()?.ToLower() == "y")
+            try
             {
-                try
+                // Check if soft setup mode is on (reg 3 bit 9)
+                device.UpdateStatus();
+                if (!device.CurrentStatus.Status.SetupMode)
                 {
-                    device.Calibrate();
-                    Console.WriteLine("Calibration started. Monitor device status for completion.");
+                    Console.WriteLine("\nError: Cannot proceed with calibration. Device must be in setup mode first.");
+                    Console.WriteLine("Use 'Send Commands > Toggle Setup Mode' to enable setup mode.");
+                    return;
                 }
-                catch (Exception ex)
+
+                Console.WriteLine("\n=== Calibration Wizard ===");
+                Console.WriteLine("You will set calibration values for analog inputs and outputs.");
+                Console.WriteLine("Valid range: 0-4095 (representing 0.024% units)\n");
+
+                // Get current calibration values
+                var config = device.ReadConfiguration();
+
+                // Analog Input 1
+                Console.WriteLine("--- Analog Input 1 ---");
+                Console.Write($"Enter Zero Calibration (0-4095, current={config.Config.AnalogInput1ZeroCalibration}): ");
+                var input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    config.Config.AnalogInput1ZeroCalibration = ParseCalibrationValue(input);
+
+                Console.Write($"Enter Span Calibration (0-4095, current={config.Config.AnalogInput1SpanCalibration}): ");
+                input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    config.Config.AnalogInput1SpanCalibration = ParseCalibrationValue(input);
+
+                // Analog Input 2
+                Console.WriteLine("\n--- Analog Input 2 ---");
+                Console.Write($"Enter Zero Calibration (0-4095, current={config.Config.AnalogInput2ZeroCalibration}): ");
+                input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    config.Config.AnalogInput2ZeroCalibration = ParseCalibrationValue(input);
+
+                Console.Write($"Enter Span Calibration (0-4095, current={config.Config.AnalogInput2SpanCalibration}): ");
+                input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    config.Config.AnalogInput2SpanCalibration = ParseCalibrationValue(input);
+
+                // Analog Output 1
+                Console.WriteLine("\n--- Analog Output 1 ---");
+                Console.Write($"Enter Zero Calibration (0-4095, current={config.Config.AnalogOutput1ZeroCalibration}): ");
+                input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    config.Config.AnalogOutput1ZeroCalibration = ParseCalibrationValue(input);
+
+                Console.Write($"Enter Span Calibration (0-4095, current={config.Config.AnalogOutput1SpanCalibration}): ");
+                input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    config.Config.AnalogOutput1SpanCalibration = ParseCalibrationValue(input);
+
+                // Analog Output 2
+                Console.WriteLine("\n--- Analog Output 2 ---");
+                Console.Write($"Enter Zero Calibration (0-4095, current={config.Config.AnalogOutput2ZeroCalibration}): ");
+                input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    config.Config.AnalogOutput2ZeroCalibration = ParseCalibrationValue(input);
+
+                Console.Write($"Enter Span Calibration (0-4095, current={config.Config.AnalogOutput2SpanCalibration}): ");
+                input = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(input))
+                    config.Config.AnalogOutput2SpanCalibration = ParseCalibrationValue(input);
+
+                // Display summary
+                Console.WriteLine("\n=== Calibration Summary ===");
+                Console.WriteLine($"AI1 Zero: {config.Config.AnalogInput1ZeroCalibration} ({config.Config.AnalogInput1ZeroCalibration * 0.024:F2}%)");
+                Console.WriteLine($"AI1 Span: {config.Config.AnalogInput1SpanCalibration} ({config.Config.AnalogInput1SpanCalibration * 0.024:F2}%)");
+                Console.WriteLine($"AI2 Zero: {config.Config.AnalogInput2ZeroCalibration} ({config.Config.AnalogInput2ZeroCalibration * 0.024:F2}%)");
+                Console.WriteLine($"AI2 Span: {config.Config.AnalogInput2SpanCalibration} ({config.Config.AnalogInput2SpanCalibration * 0.024:F2}%)");
+                Console.WriteLine($"AO1 Zero: {config.Config.AnalogOutput1ZeroCalibration} ({config.Config.AnalogOutput1ZeroCalibration * 0.024:F2}%)");
+                Console.WriteLine($"AO1 Span: {config.Config.AnalogOutput1SpanCalibration} ({config.Config.AnalogOutput1SpanCalibration * 0.024:F2}%)");
+                Console.WriteLine($"AO2 Zero: {config.Config.AnalogOutput2ZeroCalibration} ({config.Config.AnalogOutput2ZeroCalibration * 0.024:F2}%)");
+                Console.WriteLine($"AO2 Span: {config.Config.AnalogOutput2SpanCalibration} ({config.Config.AnalogOutput2SpanCalibration * 0.024:F2}%)");
+
+                Console.Write("\nApply these calibration values? (y/n): ");
+                if (Console.ReadLine()?.ToLower() == "y")
                 {
-                    Console.WriteLine($"Calibration failed: {ex.Message}");
+                    // Write calibration values to device
+                    config.Config.WriteCalibrationToDevice(_master, slaveId);
+                    Console.WriteLine("Calibration values written to device.");
+
+                    // Turn off soft setup mode
+                    device.UpdateStatus();
+                    device.CurrentStatus.Status.SoftSetupCmd = false;
+                    device.CurrentStatus.Status.WriteCommandsToDevice(_master, slaveId);
+                    Console.WriteLine("Exiting setup mode.");
+
+                    // Update the config in memory if it exists
+                    if (_currentConfig != null)
+                    {
+                        var actuatorConfig = _currentConfig.Actuators.FirstOrDefault(a => a.SlaveId == slaveId);
+                        if (actuatorConfig != null)
+                        {
+                            actuatorConfig.Config = config.Config;
+                            Console.WriteLine("Configuration updated in memory. Use 'Save Configuration' to persist changes.");
+                        }
+                    }
+
+                    Console.WriteLine("Calibration complete!");
+                }
+                else
+                {
+                    Console.WriteLine("Calibration cancelled.");
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Calibration failed: {ex.Message}");
+            }
+        }
+
+        static ushort ParseCalibrationValue(string input)
+        {
+            if (ushort.TryParse(input, out ushort value))
+            {
+                if (value > 4095)
+                {
+                    Console.WriteLine($"Value {value} exceeds maximum (4095), using 4095.");
+                    return 4095;
+                }
+                return value;
+            }
+            return 0;
         }
 
         static void EditDeviceConfigurationMenu()
@@ -804,7 +916,7 @@ namespace ModbusActuatorControl
                 Console.WriteLine("1. Basic Settings (Torque, Position Limits)");
                 Console.WriteLine("2. Register 11 Flags (EHO, Input Functions, Polarities, Triggers)");
                 Console.WriteLine("3. Register 12 Flags (Torque, Display, Inhibits, ESD, Speed)");
-                Console.WriteLine("4. Control Configuration (Control Mode, Modulation, Deadband)");
+                Console.WriteLine("4. Control Configuration (Control Mode, Modulation, Deadband, LSA/LSB, Speed Control)");
                 Console.WriteLine("5. Relay Configuration (9 Relays)");
                 Console.WriteLine("6. Additional Functions (Failsafe, ESD, Loss Comm)");
                 Console.WriteLine("7. Network Settings (Baud Rate, Parity, Response Delay)");
@@ -848,26 +960,27 @@ namespace ModbusActuatorControl
         static void EditBasicSettings(ActuatorConfig config)
         {
             Console.WriteLine($"\n--- Basic Settings ---");
-            Console.WriteLine($"Current: Close Torque={config.CloseTorque}, Open Torque={config.OpenTorque}");
-            Console.WriteLine($"         Min Position={config.MinPosition}, Max Position={config.MaxPosition}");
+            Console.WriteLine($"1. Close Torque: {config.CloseTorque}");
+            Console.WriteLine($"2. Open Torque: {config.OpenTorque}");
+            Console.Write("\nEnter number to edit (0 to exit): ");
 
-            Console.Write("\nEnter Close Torque (15-100) or press Enter to keep: ");
-            var input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.CloseTorque = ushort.Parse(input);
-
-            Console.Write("Enter Open Torque (15-100) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.OpenTorque = ushort.Parse(input);
-
-            Console.Write("Enter Min Position (0-4095) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.MinPosition = ushort.Parse(input);
-
-            Console.Write("Enter Max Position (0-4095) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.MaxPosition = ushort.Parse(input);
-
-            Console.WriteLine("Basic settings updated.");
+            if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= 2)
+            {
+                switch (choice)
+                {
+                    case 1:
+                        Console.Write("Enter Close Torque (15-100): ");
+                        if (ushort.TryParse(Console.ReadLine(), out ushort closeTorque))
+                            config.CloseTorque = closeTorque;
+                        break;
+                    case 2:
+                        Console.Write("Enter Open Torque (15-100): ");
+                        if (ushort.TryParse(Console.ReadLine(), out ushort openTorque))
+                            config.OpenTorque = openTorque;
+                        break;
+                }
+                Console.WriteLine("Updated.");
+            }
         }
 
         static void EditRegister11Flags(DeviceConfig config)
@@ -961,28 +1074,111 @@ namespace ModbusActuatorControl
         static void EditControlConfiguration(DeviceConfig config)
         {
             Console.WriteLine($"\n--- Control Configuration ---");
-            Console.WriteLine($"Current: Control Mode={config.ControlMode}");
-            Console.WriteLine($"         Modulation Delay={config.ModulationDelay}");
-            Console.WriteLine($"         Deadband={config.Deadband}");
-            Console.WriteLine($"         Network Adapter={config.NetworkAdapter}");
+            Console.WriteLine($"1. Control Mode: {config.ControlMode}");
+            Console.WriteLine($"2. Modulation Delay: {config.ModulationDelay}");
+            Console.WriteLine($"3. Deadband: {config.Deadband}");
+            Console.WriteLine($"4. Network Adapter: {config.NetworkAdapter}");
+            Console.WriteLine($"5. LSA: {config.LSA}%");
+            Console.WriteLine($"6. LSB: {config.LSB}%");
+            Console.WriteLine($"7. Open Speed Control Start: {config.OpenSpeedControlStart}%");
+            Console.WriteLine($"8. Open Speed Control Ratio: {config.OpenSpeedControlRatio}%");
+            Console.WriteLine($"9. Close Speed Control Start: {config.CloseSpeedControlStart}%");
+            Console.WriteLine($"10. Close Speed Control Ratio: {config.CloseSpeedControlRatio}%");
+            Console.Write("\nEnter number to edit (0 to exit): ");
 
-            Console.Write("\nEnter Control Mode (0-8) or press Enter to keep: ");
-            var input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.ControlMode = (ControlMode)int.Parse(input);
-
-            Console.Write("Enter Modulation Delay (0-255) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.ModulationDelay = byte.Parse(input);
-
-            Console.Write("Enter Deadband (0-255) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.Deadband = byte.Parse(input);
-
-            Console.Write("Enter Network Adapter (0-10) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.NetworkAdapter = (NetworkAdapter)int.Parse(input);
-
-            Console.WriteLine("Control configuration updated.");
+            if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= 10)
+            {
+                switch (choice)
+                {
+                    case 1:
+                        Console.Write("Enter Control Mode (0-8): ");
+                        if (int.TryParse(Console.ReadLine(), out int controlMode))
+                            config.ControlMode = (ControlMode)controlMode;
+                        break;
+                    case 2:
+                        Console.Write("Enter Modulation Delay (0-255): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte modDelay))
+                            config.ModulationDelay = modDelay;
+                        break;
+                    case 3:
+                        Console.Write("Enter Deadband (0-255): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte deadband))
+                            config.Deadband = deadband;
+                        break;
+                    case 4:
+                        Console.Write("Enter Network Adapter (0-10): ");
+                        if (int.TryParse(Console.ReadLine(), out int netAdapter))
+                            config.NetworkAdapter = (NetworkAdapter)netAdapter;
+                        break;
+                    case 5:
+                        Console.Write("Enter LSA (1-99%): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte lsa))
+                        {
+                            if (lsa < 1) lsa = 1;
+                            if (lsa > 99) lsa = 99;
+                            config.LSA = lsa;
+                        }
+                        break;
+                    case 6:
+                        Console.Write("Enter LSB (1-99%): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte lsb))
+                        {
+                            if (lsb < 1) lsb = 1;
+                            if (lsb > 99) lsb = 99;
+                            config.LSB = lsb;
+                        }
+                        break;
+                    case 7:
+                        Console.Write("Enter Open Speed Control Start (5-95%, multiple of 5): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte openStart))
+                        {
+                            if (openStart < 5) openStart = 5;
+                            if (openStart > 95) openStart = 95;
+                            int remainder = openStart % 5;
+                            if (remainder != 0)
+                                openStart = (byte)(remainder < 3 ? openStart - remainder : openStart + (5 - remainder));
+                            config.OpenSpeedControlStart = openStart;
+                        }
+                        break;
+                    case 8:
+                        Console.Write("Enter Open Speed Control Ratio (5-95%, multiple of 5): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte openRatio))
+                        {
+                            if (openRatio < 5) openRatio = 5;
+                            if (openRatio > 95) openRatio = 95;
+                            int remainder = openRatio % 5;
+                            if (remainder != 0)
+                                openRatio = (byte)(remainder < 3 ? openRatio - remainder : openRatio + (5 - remainder));
+                            config.OpenSpeedControlRatio = openRatio;
+                        }
+                        break;
+                    case 9:
+                        Console.Write("Enter Close Speed Control Start (5-95%, multiple of 5): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte closeStart))
+                        {
+                            if (closeStart < 5) closeStart = 5;
+                            if (closeStart > 95) closeStart = 95;
+                            int remainder = closeStart % 5;
+                            if (remainder != 0)
+                                closeStart = (byte)(remainder < 3 ? closeStart - remainder : closeStart + (5 - remainder));
+                            config.CloseSpeedControlStart = closeStart;
+                        }
+                        break;
+                    case 10:
+                        Console.Write("Enter Close Speed Control Ratio (5-95%, multiple of 5): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte closeRatio))
+                        {
+                            if (closeRatio < 5) closeRatio = 5;
+                            if (closeRatio > 95) closeRatio = 95;
+                            int remainder = closeRatio % 5;
+                            if (remainder != 0)
+                                closeRatio = (byte)(remainder < 3 ? closeRatio - remainder : closeRatio + (5 - remainder));
+                            config.CloseSpeedControlRatio = closeRatio;
+                        }
+                        break;
+                }
+                Console.WriteLine("Updated.");
+            }
         }
 
         static void EditRelayConfiguration(DeviceConfig config)
@@ -1022,60 +1218,83 @@ namespace ModbusActuatorControl
         static void EditAdditionalFunctions(DeviceConfig config)
         {
             Console.WriteLine($"\n--- Additional Functions ---");
-            Console.WriteLine($"Current: Failsafe Function={config.FailsafeFunction}");
-            Console.WriteLine($"         Failsafe Go To Position={config.FailsafeGoToPosition}");
-            Console.WriteLine($"         ESD Function={config.EsdFunction}");
-            Console.WriteLine($"         ESD Delay={config.EsdDelay}");
-            Console.WriteLine($"         Loss Comm Function={config.LossCommFunction}");
-            Console.WriteLine($"         Loss Comm Delay={config.LossCommDelay}");
+            Console.WriteLine($"1. Failsafe Function: {config.FailsafeFunction}");
+            Console.WriteLine($"2. Failsafe Go To Position: {config.FailsafeGoToPosition}");
+            Console.WriteLine($"3. ESD Function: {config.EsdFunction}");
+            Console.WriteLine($"4. ESD Delay: {config.EsdDelay}");
+            Console.WriteLine($"5. Loss Comm Function: {config.LossCommFunction}");
+            Console.WriteLine($"6. Loss Comm Delay: {config.LossCommDelay}");
+            Console.Write("\nEnter number to edit (0 to exit): ");
 
-            Console.Write("\nEnter Failsafe Function (0-3) or press Enter to keep: ");
-            var input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.FailsafeFunction = (FunctionAction)int.Parse(input);
-
-            Console.Write("Enter Failsafe Go To Position (0-100) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.FailsafeGoToPosition = byte.Parse(input);
-
-            Console.Write("Enter ESD Function (0-3) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.EsdFunction = (FunctionAction)int.Parse(input);
-
-            Console.Write("Enter ESD Delay (0-255) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.EsdDelay = byte.Parse(input);
-
-            Console.Write("Enter Loss Comm Function (0-3) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.LossCommFunction = (FunctionAction)int.Parse(input);
-
-            Console.Write("Enter Loss Comm Delay (0-255) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.LossCommDelay = byte.Parse(input);
-
-            Console.WriteLine("Additional functions updated.");
+            if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= 6)
+            {
+                switch (choice)
+                {
+                    case 1:
+                        Console.Write("Enter Failsafe Function (0-3): ");
+                        if (int.TryParse(Console.ReadLine(), out int failsafeFunc))
+                            config.FailsafeFunction = (FunctionAction)failsafeFunc;
+                        break;
+                    case 2:
+                        Console.Write("Enter Failsafe Go To Position (0-100): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte failsafePos))
+                            config.FailsafeGoToPosition = failsafePos;
+                        break;
+                    case 3:
+                        Console.Write("Enter ESD Function (0-3): ");
+                        if (int.TryParse(Console.ReadLine(), out int esdFunc))
+                            config.EsdFunction = (FunctionAction)esdFunc;
+                        break;
+                    case 4:
+                        Console.Write("Enter ESD Delay (0-255): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte esdDelay))
+                            config.EsdDelay = esdDelay;
+                        break;
+                    case 5:
+                        Console.Write("Enter Loss Comm Function (0-3): ");
+                        if (int.TryParse(Console.ReadLine(), out int lossCommFunc))
+                            config.LossCommFunction = (FunctionAction)lossCommFunc;
+                        break;
+                    case 6:
+                        Console.Write("Enter Loss Comm Delay (0-255): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte lossCommDelay))
+                            config.LossCommDelay = lossCommDelay;
+                        break;
+                }
+                Console.WriteLine("Updated.");
+            }
         }
 
         static void EditNetworkSettings(DeviceConfig config)
         {
             Console.WriteLine($"\n--- Network Settings ---");
-            Console.WriteLine($"Current: Network Baud Rate={config.NetworkBaudRate}");
-            Console.WriteLine($"         Network Response Delay={config.NetworkResponseDelay}");
-            Console.WriteLine($"         Network Comm Parity={config.NetworkCommParity}");
+            Console.WriteLine($"1. Network Baud Rate: {config.NetworkBaudRate}");
+            Console.WriteLine($"2. Network Response Delay: {config.NetworkResponseDelay}");
+            Console.WriteLine($"3. Network Comm Parity: {config.NetworkCommParity}");
+            Console.Write("\nEnter number to edit (0 to exit): ");
 
-            Console.Write("\nEnter Network Baud Rate (0-5) or press Enter to keep: ");
-            var input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.NetworkBaudRate = (NetworkBaudRate)int.Parse(input);
-
-            Console.Write("Enter Network Response Delay (0-255) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.NetworkResponseDelay = byte.Parse(input);
-
-            Console.Write("Enter Network Comm Parity (0-2) or press Enter to keep: ");
-            input = Console.ReadLine();
-            if (!string.IsNullOrWhiteSpace(input)) config.NetworkCommParity = (NetworkCommParity)int.Parse(input);
-
-            Console.WriteLine("Network settings updated.");
+            if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= 3)
+            {
+                switch (choice)
+                {
+                    case 1:
+                        Console.Write("Enter Network Baud Rate (0-5): ");
+                        if (int.TryParse(Console.ReadLine(), out int baudRate))
+                            config.NetworkBaudRate = (NetworkBaudRate)baudRate;
+                        break;
+                    case 2:
+                        Console.Write("Enter Network Response Delay (0-255): ");
+                        if (byte.TryParse(Console.ReadLine(), out byte responseDelay))
+                            config.NetworkResponseDelay = responseDelay;
+                        break;
+                    case 3:
+                        Console.Write("Enter Network Comm Parity (0-2): ");
+                        if (int.TryParse(Console.ReadLine(), out int parity))
+                            config.NetworkCommParity = (NetworkCommParity)parity;
+                        break;
+                }
+                Console.WriteLine("Updated.");
+            }
         }
 
     }
