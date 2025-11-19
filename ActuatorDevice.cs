@@ -89,6 +89,11 @@ namespace ModbusActuatorControl
                 // Read all status flags
                 status.Status.ReadFromDevice(_master, _slaveId);
 
+                // Read torque settings from Register 112
+                var torqueReg = _master.ReadHoldingRegisters(_slaveId, 112, 1)[0];
+                status.CloseTorque = (ushort)((torqueReg >> 8) & 0xFF);
+                status.OpenTorque = (ushort)(torqueReg & 0xFF);
+
                 // Read configuration
                 status.Config.ReadFromDevice(_master, _slaveId);
 
@@ -134,20 +139,6 @@ namespace ModbusActuatorControl
             catch (Exception ex)
             {
                 throw new Exception($"Failed to set torque for device {_slaveId}: {ex.Message}", ex);
-            }
-        }
-
-        // Run calibration
-        public void Calibrate()
-        {
-            try
-            {
-                _master.WriteSingleRegister(_slaveId, 200, 1);
-                Console.WriteLine($"Device {_slaveId}: Starting calibration");
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to calibrate device {_slaveId}: {ex.Message}", ex);
             }
         }
 
@@ -246,6 +237,9 @@ namespace ModbusActuatorControl
                 config.CloseTorque = (ushort)((torqueReg >> 8) & 0xFF);
                 config.OpenTorque = (ushort)(torqueReg & 0xFF);
 
+                // Read PST Result
+                config.PstResult = (byte)_master.ReadHoldingRegisters(_slaveId, 29, 1)[0];
+
                 // Read all device configuration
                 config.Config.ReadFromDevice(_master, _slaveId);
 
@@ -263,6 +257,10 @@ namespace ModbusActuatorControl
     {
         public ushort Position { get; set; }
         public DateTime Timestamp { get; set; }
+
+        // Torque settings from Register 112
+        public ushort CloseTorque { get; set; }
+        public ushort OpenTorque { get; set; }
 
         // All device status (alarms, operating state, etc.)
         public DeviceStatus Status { get; set; } = new DeviceStatus();
@@ -285,9 +283,26 @@ namespace ModbusActuatorControl
             // Convert valve torque from 0-4095 to percentage (0.024% per unit)
             double torquePercent = Status.ValveTorque * 0.024;
 
+            // Convert PST result to readable string
+            string pstResultText = Status.PstResult switch
+            {
+                0 => "Never Run",
+                1 => "In Progress",
+                2 => "Passed",
+                3 => "Failed",
+                _ => $"Unknown ({Status.PstResult})"
+            };
+
             var details = $"=== Actuator Status (Updated: {Timestamp:HH:mm:ss}) ===\n" +
                          $"Position: {Position}\n" +
+                         $"Close Torque: {CloseTorque}% (Register 112)\n" +
+                         $"Open Torque: {OpenTorque}% (Register 112)\n" +
                          $"Valve Torque: {Status.ValveTorque} ({torquePercent:F2}%)\n" +
+                         $"PST Result: {pstResultText}\n" +
+                         $"Analog Input 1: {Status.AnalogInput1}\n" +
+                         $"Analog Input 2: {Status.AnalogInput2}\n" +
+                         $"Analog Output 1: {Status.AnalogOutput1}\n" +
+                         $"Analog Output 2: {Status.AnalogOutput2}\n" +
                          $"Moving: {IsMoving}\n" +
                          $"Has Alarms: {HasAnyAlarm}\n\n";
 
@@ -394,7 +409,29 @@ namespace ModbusActuatorControl
             details += "=== Network Settings (Registers 110-111) ===\n";
             details += $"Network Baud Rate: {Config.NetworkBaudRate}\n";
             details += $"Network Response Delay: {Config.NetworkResponseDelay}\n";
-            details += $"Network Comm Parity: {Config.NetworkCommParity}\n";
+            details += $"Network Comm Parity: {Config.NetworkCommParity}\n\n";
+
+            details += "=== Limit Switch Settings (Register 113) ===\n";
+            details += $"LSA (Limit Switch A): {Config.LSA}%\n";
+            details += $"LSB (Limit Switch B): {Config.LSB}%\n\n";
+
+            details += "=== Open Speed Control (Register 114) ===\n";
+            details += $"Open Speed Control Start: {Config.OpenSpeedControlStart}%\n";
+            details += $"Open Speed Control Ratio: {Config.OpenSpeedControlRatio}%\n\n";
+
+            details += "=== Close Speed Control (Register 115) ===\n";
+            details += $"Close Speed Control Start: {Config.CloseSpeedControlStart}%\n";
+            details += $"Close Speed Control Ratio: {Config.CloseSpeedControlRatio}%\n\n";
+
+            details += "=== Calibration Values (Registers 500-507) ===\n";
+            details += $"Analog Input 1 Zero Calibration: {Config.AnalogInput1ZeroCalibration} ({Config.AnalogInput1ZeroCalibration * 0.024:F2}%)\n";
+            details += $"Analog Input 1 Span Calibration: {Config.AnalogInput1SpanCalibration} ({Config.AnalogInput1SpanCalibration * 0.024:F2}%)\n";
+            details += $"Analog Input 2 Zero Calibration: {Config.AnalogInput2ZeroCalibration} ({Config.AnalogInput2ZeroCalibration * 0.024:F2}%)\n";
+            details += $"Analog Input 2 Span Calibration: {Config.AnalogInput2SpanCalibration} ({Config.AnalogInput2SpanCalibration * 0.024:F2}%)\n";
+            details += $"Analog Output 1 Zero Calibration: {Config.AnalogOutput1ZeroCalibration} ({Config.AnalogOutput1ZeroCalibration * 0.024:F2}%)\n";
+            details += $"Analog Output 1 Span Calibration: {Config.AnalogOutput1SpanCalibration} ({Config.AnalogOutput1SpanCalibration * 0.024:F2}%)\n";
+            details += $"Analog Output 2 Zero Calibration: {Config.AnalogOutput2ZeroCalibration} ({Config.AnalogOutput2ZeroCalibration * 0.024:F2}%)\n";
+            details += $"Analog Output 2 Span Calibration: {Config.AnalogOutput2SpanCalibration} ({Config.AnalogOutput2SpanCalibration * 0.024:F2}%)\n";
 
             return details;
         }
