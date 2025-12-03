@@ -1,0 +1,456 @@
+<Page x:Class="WPF_GUI.NewFolder.Page2"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:local="clr-namespace:WPF_GUI.NewFolder"
+      mc:Ignorable="d"
+      d:DesignHeight="900" d:DesignWidth="1100"
+      Title="Control">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="20">
+            <!-- Page Header -->
+            <TextBlock Text="Valve Control &amp; Monitoring"
+                       Style="{StaticResource PageTitle}"/>
+            <TextBlock Text="Real-time control and status monitoring of actuator"
+                       Style="{StaticResource PageDescription}"/>
+
+            <!-- Device Selector -->
+            <Border Style="{StaticResource Card}" Margin="10,0,10,10" Padding="15">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Selected Device:" VerticalAlignment="Center" FontWeight="SemiBold" Margin="0,0,15,0"/>
+                    <ComboBox x:Name="DeviceComboBox" Grid.Column="1" Style="{StaticResource ModernComboBox}" SelectionChanged="DeviceComboBox_SelectionChanged"/>
+                    <Button x:Name="RefreshStatusButton" Grid.Column="2" Content="Refresh Status" Style="{StaticResource SecondaryButton}" Margin="15,0,0,0" MinWidth="120"/>
+                    <TextBlock x:Name="ProductTypeText" Grid.Column="3" Text="" VerticalAlignment="Center" HorizontalAlignment="Right" FontStyle="Italic" Foreground="{StaticResource TextGray}"/>
+                </Grid>
+            </Border>
+
+            <!-- Control Grid -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1*"/>
+                    <ColumnDefinition Width="1*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Visual Indicators Card -->
+                <Border Grid.Column="0" Grid.Row="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <!-- Card Header -->
+                        <Border BorderBrush="{StaticResource PrimaryRed}"
+                                BorderThickness="0,0,0,2"
+                                Padding="0,0,0,8"
+                                Margin="0,0,0,20">
+                            <TextBlock Text="Visual Indicators"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextDark}"/>
+                        </Border>
+
+                        <!-- Valve Position -->
+                        <StackPanel Margin="0,0,0,25">
+                            <TextBlock Text="Valve Position"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="#34495e"
+                                       Margin="0,0,0,10"/>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Position Bar -->
+                                <Border Grid.Column="0"
+                                        Height="40"
+                                        Background="#ecf0f1"
+                                        CornerRadius="20"
+                                        Margin="0,0,10,0">
+                                    <Border x:Name="PositionFill"
+                                            HorizontalAlignment="Left"
+                                            Width="250"
+                                            CornerRadius="20">
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                                <GradientStop Color="#27ae60" Offset="0"/>
+                                                <GradientStop Color="#2ecc71" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                </Border>
+
+                                <!-- Position Value -->
+                                <TextBlock Grid.Column="1"
+                                           x:Name="PositionValueText"
+                                           Text="50.0%"
+                                           FontSize="18"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource TextDark}"
+                                           VerticalAlignment="Center"
+                                           MinWidth="60"
+                                           TextAlignment="Right"/>
+                            </Grid>
+
+                            <Grid Margin="0,5,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Closed (0%)" FontSize="12" Foreground="{StaticResource TextGray}"/>
+                                <TextBlock Grid.Column="1" Text="Open (100%)" FontSize="12" Foreground="{StaticResource TextGray}" HorizontalAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Torque -->
+                        <StackPanel Margin="0,0,0,25">
+                            <TextBlock Text="Torque"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="#34495e"
+                                       Margin="0,0,0,10"/>
+
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Torque Bar -->
+                                <Border Grid.Column="0"
+                                        Height="40"
+                                        Background="#ecf0f1"
+                                        CornerRadius="20"
+                                        Margin="0,0,10,0">
+                                    <Border x:Name="TorqueFill"
+                                            HorizontalAlignment="Left"
+                                            Width="225"
+                                            Background="{StaticResource SuccessGreen}"
+                                            CornerRadius="20"/>
+                                </Border>
+
+                                <!-- Torque Value -->
+                                <TextBlock Grid.Column="1"
+                                           x:Name="TorqueValueText"
+                                           Text="45.0%"
+                                           FontSize="18"
+                                           FontWeight="Bold"
+                                           Foreground="{StaticResource TextDark}"
+                                           VerticalAlignment="Center"
+                                           MinWidth="60"
+                                           TextAlignment="Right"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Current Status -->
+                        <StackPanel>
+                            <TextBlock Text="Current Status"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="#34495e"
+                                       Margin="0,0,0,10"/>
+
+                            <Border x:Name="StatusBadge"
+                                    Background="#95a5a6"
+                                    CornerRadius="6"
+                                    Padding="12,10"
+                                    HorizontalAlignment="Left">
+                                <TextBlock x:Name="StatusText"
+                                           Text="STOPPED"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Foreground="White"/>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Valve Commands Card -->
+                <Border Grid.Column="1" Grid.Row="0" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <!-- Card Header -->
+                        <Border BorderBrush="{StaticResource PrimaryRed}"
+                                BorderThickness="0,0,0,2"
+                                Padding="0,0,0,8"
+                                Margin="0,0,0,20">
+                            <TextBlock Text="Valve Commands"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextDark}"/>
+                        </Border>
+
+                        <!-- Basic Command Buttons -->
+                        <Grid Margin="0,0,0,15">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Button x:Name="OpenCommandButton" Grid.Column="0" Style="{StaticResource PrimaryButton}" Margin="0,0,5,0" Padding="15,12">
+                                <StackPanel>
+                                    <TextBlock Text="OPEN" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="StopCommandButton" Grid.Column="1" Style="{StaticResource SecondaryButton}" Margin="5,0,5,0" Padding="15,12">
+                                <StackPanel>
+                                    <TextBlock Text="STOP" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button x:Name="CloseCommandButton" Grid.Column="2" Style="{StaticResource InfoButton}" Margin="5,0,0,0" Padding="15,12">
+                                <StackPanel>
+                                    <TextBlock Text="CLOSE" FontSize="14" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+
+                        <!-- Move to Position -->
+                        <StackPanel Margin="0,0,0,15">
+                            <TextBlock Text="Move to Position (0-4095)" Style="{StaticResource FormLabel}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox x:Name="TargetPositionTextBox" Grid.Column="0" Text="2048" Style="{StaticResource ModernTextBox}" Margin="0,0,10,0"/>
+                                <Button x:Name="MoveToPositionButton" Grid.Column="1" Content="MOVE" Style="{StaticResource InfoButton}" MinWidth="80"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Emergency/Special Commands -->
+                        <StackPanel Margin="0,0,0,15">
+                            <TextBlock Text="Special Commands" Style="{StaticResource FormLabel}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="1*"/>
+                                    <ColumnDefinition Width="1*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button x:Name="EsdCommandButton" Grid.Column="0" Content="ESD" Style="{StaticResource DangerButton}" Margin="0,0,5,0" ToolTip="Emergency Shutdown"/>
+                                <Button x:Name="PstCommandButton" Grid.Column="1" Content="PST" Style="{StaticResource SecondaryButton}" Margin="5,0,0,0" ToolTip="Partial Stroke Test"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Setup Mode Toggle -->
+                        <Border Background="{StaticResource BackgroundGray}" CornerRadius="6" Padding="15">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Setup Mode" FontWeight="SemiBold" Foreground="{StaticResource TextDark}"/>
+                                        <TextBlock x:Name="SetupModeStatusText" Text="Inactive" FontSize="12" Foreground="{StaticResource TextGray}"/>
+                                    </StackPanel>
+                                    <Button x:Name="ToggleSetupModeButton" Grid.Column="1" Content="Enable" Style="{StaticResource SecondaryButton}" MinWidth="100"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Status Bits Card -->
+                <Border Grid.Column="0" Grid.Row="1" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <!-- Card Header -->
+                        <Border BorderBrush="{StaticResource PrimaryRed}"
+                                BorderThickness="0,0,0,2"
+                                Padding="0,0,0,8"
+                                Margin="0,0,0,20">
+                            <TextBlock Text="Status Bits (Register 0-9)"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextDark}"/>
+                        </Border>
+
+                        <!-- Status Bits Grid -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Row 0 -->
+                            <Border x:Name="PowerOkIndicator" Grid.Column="0" Grid.Row="0" Background="#d4edda" CornerRadius="6" Padding="10" Margin="0,0,5,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="PowerOkDot" Width="16" Height="16" Fill="{StaticResource SuccessGreen}" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Power OK" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="CommIndicator" Grid.Column="1" Grid.Row="0" Background="#d4edda" CornerRadius="6" Padding="10" Margin="5,0,0,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="CommDot" Width="16" Height="16" Fill="{StaticResource SuccessGreen}" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Communication" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Row 1 -->
+                            <Border x:Name="CalibratedIndicator" Grid.Column="0" Grid.Row="1" Background="#d4edda" CornerRadius="6" Padding="10" Margin="0,0,5,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="CalibratedDot" Width="16" Height="16" Fill="{StaticResource SuccessGreen}" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Calibrated" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="MovingIndicator" Grid.Column="1" Grid.Row="1" Background="{StaticResource BackgroundGray}" CornerRadius="6" Padding="10" Margin="5,0,0,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="MovingDot" Width="16" Height="16" Fill="#95a5a6" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Moving" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Row 2 -->
+                            <Border x:Name="OpenLimitIndicator" Grid.Column="0" Grid.Row="2" Background="{StaticResource BackgroundGray}" CornerRadius="6" Padding="10" Margin="0,0,5,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="OpenLimitDot" Width="16" Height="16" Fill="#95a5a6" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Open Limit" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="CloseLimitIndicator" Grid.Column="1" Grid.Row="2" Background="{StaticResource BackgroundGray}" CornerRadius="6" Padding="10" Margin="5,0,0,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="CloseLimitDot" Width="16" Height="16" Fill="#95a5a6" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Close Limit" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Row 3 -->
+                            <Border x:Name="SetupModeIndicator" Grid.Column="0" Grid.Row="3" Background="{StaticResource BackgroundGray}" CornerRadius="6" Padding="10" Margin="0,0,5,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="SetupModeDot" Width="16" Height="16" Fill="#95a5a6" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Setup Mode" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="TorqueLimitIndicator" Grid.Column="1" Grid.Row="3" Background="{StaticResource BackgroundGray}" CornerRadius="6" Padding="10" Margin="5,0,0,10">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="TorqueLimitDot" Width="16" Height="16" Fill="#95a5a6" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Torque Limit" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Row 4 -->
+                            <Border x:Name="LocalModeIndicator" Grid.Column="0" Grid.Row="4" Background="{StaticResource BackgroundGray}" CornerRadius="6" Padding="10" Margin="0,0,5,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="LocalModeDot" Width="16" Height="16" Fill="#95a5a6" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Local Mode" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border x:Name="ManualOverrideIndicator" Grid.Column="1" Grid.Row="4" Background="{StaticResource BackgroundGray}" CornerRadius="6" Padding="10" Margin="5,0,0,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse x:Name="ManualOverrideDot" Width="16" Height="16" Fill="#95a5a6" Margin="0,0,10,0"/>
+                                    <TextBlock Text="Manual Override" FontWeight="Medium" Foreground="{StaticResource TextDark}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Alarms & Alerts Card -->
+                <Border Grid.Column="1" Grid.Row="1" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <!-- Card Header -->
+                        <Border BorderBrush="{StaticResource PrimaryRed}"
+                                BorderThickness="0,0,0,2"
+                                Padding="0,0,0,8"
+                                Margin="0,0,0,20">
+                            <TextBlock Text="Alarms &amp; Alerts"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource TextDark}"/>
+                        </Border>
+
+                        <!-- Alarm Status -->
+                        <Border x:Name="AlarmStatusPanel" Margin="0,0,0,15">
+                            <StackPanel HorizontalAlignment="Center" Margin="0,10,0,10">
+                                <TextBlock x:Name="AlarmStatusIcon" Text="No Alarms" FontSize="36" Foreground="{StaticResource SuccessGreen}" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                <TextBlock x:Name="AlarmStatusText" Text="No active alarms" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource SuccessGreen}" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Alarm List -->
+                        <ListBox x:Name="AlarmListBox" MinHeight="80" MaxHeight="150" Margin="0,0,0,15" Background="White" BorderBrush="#ddd" BorderThickness="1" Visibility="Collapsed"/>
+
+                        <!-- Alarm Legend -->
+                        <Border Background="{StaticResource BackgroundGray}" CornerRadius="6" Padding="15">
+                            <StackPanel>
+                                <TextBlock Text="Monitored Conditions:" FontWeight="SemiBold" Foreground="{StaticResource TextDark}" Margin="0,0,0,10"/>
+                                <TextBlock Text="Over-torque protection" FontSize="13" Foreground="#555555" Margin="0,0,0,5"/>
+                                <TextBlock Text="Communication timeout" FontSize="13" Foreground="#555555" Margin="0,0,0,5"/>
+                                <TextBlock Text="Position sensor errors" FontSize="13" Foreground="#555555" Margin="0,0,0,5"/>
+                                <TextBlock Text="Temperature warnings" FontSize="13" Foreground="#555555"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Detailed Status Card -->
+                <Border Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" Style="{StaticResource Card}">
+                    <StackPanel>
+                        <Border BorderBrush="{StaticResource PrimaryRed}" BorderThickness="0,0,0,2" Padding="0,0,0,8" Margin="0,0,0,20">
+                            <TextBlock Text="Detailed Register Status" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource TextDark}"/>
+                        </Border>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Position Info" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock x:Name="DetailPositionText" Text="Position: 0" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="DetailSetpointText" Text="Setpoint: 0" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="DetailAnalogInText" Text="Analog In: 0" FontSize="12"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="10,0,10,0">
+                                <TextBlock Text="Torque Info" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock x:Name="DetailTorqueText" Text="Torque: 0" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="DetailPeakTorqueText" Text="Peak Torque: 0" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="DetailTorqueLimitText" Text="Torque Limit: 0" FontSize="12"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2" Margin="10,0,10,0">
+                                <TextBlock Text="Temperature" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock x:Name="DetailTempText" Text="Board Temp: 0 C" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="DetailMotorTempText" Text="Motor Temp: 0 C" FontSize="12"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="3" Margin="10,0,0,0">
+                                <TextBlock Text="Device Info" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                                <TextBlock x:Name="DetailProductIdText" Text="Product ID: 0x0000" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="DetailFirmwareText" Text="Firmware: 0" FontSize="12" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="DetailCycleCountText" Text="Cycle Count: 0" FontSize="12"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</Page>
