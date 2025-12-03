@@ -1,0 +1,180 @@
+<Window x:Class="WPF_GUI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WPF_GUI"
+        mc:Ignorable="d"
+        Title="BRAY Actuator Configuration" Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <!-- Navigation Tab Style -->
+        <Style x:Key="NavTabStyle" TargetType="RadioButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Border"
+                                Background="Transparent"
+                                Padding="25,15"
+                                BorderThickness="0,0,0,3"
+                                BorderBrush="Transparent">
+                            <TextBlock Text="{TemplateBinding Content}"
+                                       Foreground="#ecf0f1"
+                                       FontSize="14"
+                                       FontWeight="Medium"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource NavDarkHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource NavDarkHover}"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="{StaticResource PrimaryRed}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <!-- Mode Toggle Style -->
+        <Style x:Key="ModeToggleStyle" TargetType="RadioButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Border"
+                                Background="#34495e"
+                                Padding="12,6"
+                                CornerRadius="4"
+                                BorderThickness="2"
+                                BorderBrush="Transparent">
+                            <TextBlock Text="{TemplateBinding Content}"
+                                       Foreground="{TemplateBinding Foreground}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#3d5a6b"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="#27ae60"/>
+                                <Setter TargetName="Border" Property="BorderBrush" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </Window.Resources>
+
+    <DockPanel>
+        <!-- Header Section with Red Gradient -->
+        <Border DockPanel.Dock="Top" Height="80">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#c41e3a" Offset="0"/>
+                    <GradientStop Color="#a01828" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" Opacity="0.1" BlurRadius="8" ShadowDepth="2" Direction="270"/>
+            </Border.Effect>
+
+            <Grid Margin="30,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Logo -->
+                <Image Grid.Column="0"
+                       Height="50" Width="50"
+                       Margin="0,0,20,0"
+                       VerticalAlignment="Center"
+                       Stretch="Uniform"
+                       Source="/Assets/Logo.png"/>
+
+                <!-- Bray Logo -->
+                <Image Grid.Column="1"
+                       Height="45"
+                       HorizontalAlignment="Left"
+                       VerticalAlignment="Center"
+                       Stretch="Uniform"
+                       Source="/Assets/bray black.png">
+                    <Image.Effect>
+                        <DropShadowEffect Color="White" BlurRadius="8" Opacity="0.3" ShadowDepth="0"/>
+                    </Image.Effect>
+                </Image>
+
+                <!-- Mode Toggle -->
+                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                    <TextBlock Text="Mode:"
+                               FontSize="12"
+                               Foreground="White"
+                               Opacity="0.8"
+                               Margin="0,0,0,5"
+                               HorizontalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="SimulationModeRadio"
+                                     Content="Simulation"
+                                     Foreground="White"
+                                     IsChecked="True"
+                                     Checked="ModeChanged"
+                                     Style="{StaticResource ModeToggleStyle}"
+                                     Margin="0,0,10,0"/>
+                        <RadioButton x:Name="ProductionModeRadio"
+                                     Content="Production"
+                                     Foreground="White"
+                                     Checked="ModeChanged"
+                                     Style="{StaticResource ModeToggleStyle}"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Navigation Bar -->
+        <Border DockPanel.Dock="Top" Background="{StaticResource NavDark}">
+            <Border.Effect>
+                <DropShadowEffect Color="#000000" Opacity="0.1" BlurRadius="4" ShadowDepth="2" Direction="270"/>
+            </Border.Effect>
+
+            <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="NavConnection"
+                             Content="Connection"
+                             Checked="NavButton_Checked"
+                             Tag="/NewFolder/Page1.xaml"
+                             IsChecked="True"
+                             Style="{StaticResource NavTabStyle}"/>
+                <RadioButton x:Name="NavControl"
+                             Content="Control"
+                             Checked="NavButton_Checked"
+                             Tag="/NewFolder/Page2.xaml"
+                             Style="{StaticResource NavTabStyle}"/>
+                <RadioButton x:Name="NavConfig"
+                             Content="Configuration"
+                             Checked="NavButton_Checked"
+                             Tag="/NewFolder/Page3.xaml"
+                             Style="{StaticResource NavTabStyle}"/>
+                <RadioButton x:Name="NavNetwork"
+                             Content="Network"
+                             Checked="NavButton_Checked"
+                             Tag="/NewFolder/Page4.xaml"
+                             Style="{StaticResource NavTabStyle}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Main Content Area -->
+        <Grid Background="{StaticResource BackgroundGray}">
+            <Frame x:Name="navframe"
+                   NavigationUIVisibility="Hidden"
+                   Background="Transparent"
+                   Margin="20"/>
+        </Grid>
+    </DockPanel>
+</Window>
